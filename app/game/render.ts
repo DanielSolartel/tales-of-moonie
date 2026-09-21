@@ -285,6 +285,14 @@ export class MoonieRenderer {
     d.drawImage(this.adventure.grove,0,340-cam);
     d.drawImage(this.adventure.bridge,0,300-cam);
     d.drawImage(this.adventure.maze,0,MAZE_TOP-cam-20);
+    // Alpha-fading two independently painted, detailed foliage textures at the maze's
+    // entrance produces a hazy "double exposure" band rather than a clean blend, however
+    // wide the fade (verified: widening it only spreads the haze). A soft shadow reads
+    // instead as the path dipping into denser shade — it doesn't touch the approved exit.
+    {const topY=MAZE_BOTTOM-80-cam,botY=MAZE_BOTTOM-2-cam;
+     const grad=d.createLinearGradient(0,topY,0,botY);
+     grad.addColorStop(0,'rgba(2,7,18,0)');grad.addColorStop(.4,'rgba(2,7,18,.58)');grad.addColorStop(.65,'rgba(2,7,18,.58)');grad.addColorStop(1,'rgba(2,7,18,0)');
+     d.fillStyle=grad;d.fillRect(0,topY,640,botY-topY);}
     d.drawImage(this.adventure.river,0,RIVER_TOP-cam-20);
     d.drawImage(this.adventure.mazeJoin,0,MAZE_TOP-185-cam);
     d.drawImage(this.adventure.riverJoin,0,RIVER_TOP-190-cam);
