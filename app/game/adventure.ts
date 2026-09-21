@@ -12,10 +12,12 @@ export const LIGHTS=[{x:140,y:530},{x:302,y:650},{x:478,y:555}],HIDE_LABELS=['la
 export const STONES=[{x:252,y:231},{x:321,y:207},{x:394,y:232},{x:253,y:178},{x:394,y:178},{x:254,y:127},{x:321,y:153},{x:393,y:127},{x:321,y:98}].map(p=>({...p,y:p.y+RIVER_TOP}));
 export const RIVER_ROUTES=[[0,3,6,5,8],[2,4,6,7,8],[1,3,6,7,8]] as const;
 export const RIVER_SHORE={x:320,y:RIVER_TOP+312},RIVER_EXIT={x:320,y:RIVER_TOP+62};
-// Recomposición aprobada (21/09/2026): separa las tres plantas entre sí, de Simón (LANDMARKS.simon,
-// x:430 y:-1250) y de la tercera flor (THIRD_FLOWER, x:342 y:-1320), conservando el orden de índices
-// (0 luna creciente, 1 estrellada, 2 anillos) y el centrado dentro de la elipse jugable de walkAllowed.
-export const PLANTS=[{x:215,y:worldY(-1200)},{x:325,y:worldY(-1180)},{x:235,y:worldY(-1310)}];
+// Segunda recomposición (revisión manual): las plantas seguían demasiado cerca de Simón
+// (LANDMARKS.simon, x:430 y:-1250) y de la tercera flor (THIRD_FLOWER, x:342 y:-1320).
+// Nuevo margen libre: ~45 unidades con Simón y ~43 con la flor (el ancho de Moonie, ~48,
+// funciona como referencia; no fue posible superar ambos límites a la vez sin desplazar
+// el centroide más de lo razonable). Separación entre plantas: 96-169 unidades.
+export const PLANTS=[{x:305,y:worldY(-1170)},{x:220,y:worldY(-1215)},{x:210,y:worldY(-1310)}];
 export const PATTERNS=[[1,0,2],[2,0,1,0,2]] as const,PATTERN=PATTERNS[0];
 export type CinemaKind='spirit'|'ritual'|'bloom2'|'bloom3'|'bookReveal'|'riverDemo'|'riverError'|'patternDemo'|'constellation';
 export type Cinema={kind:CinemaKind;time:number;duration:number;index:number;origin:Point;direction:Direction;cue:number};

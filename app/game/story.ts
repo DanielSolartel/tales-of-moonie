@@ -124,6 +124,10 @@ function onTrail(x:number,y:number) {
   // Optional side nook rejoins the main route; it is never a mandatory gate.
   if(Math.hypot((x-380)/77,(y+1250)/30)<1)return true;
   if(Math.hypot((x-244)/77,(y+1000)/31)<1)return true;
+  // Bridges the maze's own exit (x328) to the legacy trail's next confirmed point
+  // (325,-411): the old detour through x365-417 left a collision gap right where
+  // the compact maze now opens, and Moonie could walk forward and simply stop.
+  if(Math.hypot((x-327)/30,(y+376)/45)<1)return true;
   return PATH.some((a,i)=>{
     const b=PATH[i+1]||a,dx=b.x-a.x,dy=b.y-a.y,length=dx*dx+dy*dy;
     const t=length?Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/length)):0;

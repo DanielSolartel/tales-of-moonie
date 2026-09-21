@@ -14,6 +14,27 @@ test('Laberinto compacto: cuatro cruces, dos desvíos y un bucle reversibles',()
  for(const points of [g.MAZE_ROUTE,...g.MAZE_BRANCHES])for(let i=0;i<points.length-1;i++){const a=points[i],b=points[i+1],n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y));for(let j=0;j<=n;j++){const t=j/n,x=a.x+(b.x-a.x)*t,y=g.MAZE_TOP+a.y+(b.y-a.y)*t;assert.ok(g.walkAllowed(w,x,y),`path ${x},${y}`);}}
  assert.equal(g.walkAllowed(w,10,-700),false);assert.equal(g.walkAllowed({...w,progress:1},342,-345),false);w.y=g.MAZE_TOP;g.tickChallenges(w,.02);assert.equal(w.challenges.mazeDone,true);assert.equal(w.challenges.cinema.kind,'bookReveal');
 });
+test('La salida del laberinto no atasca a Moonie con controles normales',()=>{
+ // Réplica del bucle real de movimiento (igual que el test del arroyo de más abajo):
+ // sostener "arriba" desde justo antes de la salida no debe dejarla clavada en el punto
+ // exacto donde estaba el bug (apenas 5px pasada la salida, antes del parche).
+ const VIEW_SPEED=77;
+ const frame=(w,dx,dy,dt)=>{
+  const len=Math.hypot(dx,dy)||1,ndx=dx/len*VIEW_SPEED*dt,ndy=dy/len*VIEW_SPEED*dt;
+  const bx=w.x,by=w.y;
+  if(g.walkAllowed(w,w.x+ndx,w.y))w.x+=ndx;
+  if(g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;
+  return Math.abs(w.x-bx)+Math.abs(w.y-by)>1e-6;
+ };
+ const w={x:g.MAZE_ROUTE[7].x,y:g.MAZE_TOP+g.MAZE_ROUTE[7].y-4,bloomed:true,progress:2,challenges:g.freshChallenges(0)};
+ for(let i=0;i<120;i++)frame(w,0,-1,1/60); // 2s reales sosteniendo "arriba" (norte)
+ // Antes del parche quedaba clavada en y=MAZE_TOP-5 (apenas salir) los 2s completos.
+ assert.ok(w.y<g.MAZE_TOP-70,`solo avanzó hasta y=${w.y}, antes se atascaba en MAZE_TOP-5`);
+ // Sostener "arriba" el resto del camino la detiene, con razón, justo en la reja del río
+ // (progreso<3 todavía): eso es la historia, no el bug — no debe ir más allá.
+ for(let i=0;i<300;i++)frame(w,0,-1,1/60); // 5s más
+ assert.ok(w.y>g.RIVER_TOP,'no debe entrar al arroyo antes de leer el segundo libro');
+});
 for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones físicas y cinco saltos`,()=>{
  const w={...world(route),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);assert.equal(w.challenges.river,'crossing');
  for(const index of g.RIVER_ROUTES[route]){const p=g.STONES[index],dx=Math.abs(p.x-w.x)<15?0:Math.sign(p.x-w.x),dy=Math.abs(p.x-w.x)<15?Math.sign(p.y-w.y):0;assert.ok(g.tryRiverStep(w,dx,dy));assert.equal(w.challenges.jumpIndex,index,`expected ${index}, from ${w.x},${w.y}`);tick(w,.57);assert.equal(w.challenges.river,'crossing');}
@@ -40,6 +61,41 @@ test('Tras completar el arroyo, el regreso por las piedras queda bloqueado de in
  assert.ok(g.walkAllowed(w,320,g.RIVER_TOP+40));
  // Una partida nueva no conserva el bloqueo: freshChallenges vuelve a 'waiting'.
  assert.equal(g.freshChallenges().river,'waiting');
+});
+test('Entradas reales de teclado (cuadro a cuadro, como en el juego) no logran regresar por las piedras',()=>{
+ // Reproduce exactamente la integración de movimiento de MoonieGame.tsx: normaliza dx/dy,
+ // multiplica por VIEW.speed*dt, intenta tryRiverStep y solo si falla aplica walkAllowed
+ // por eje. No es una aserción de estado: es la simulación del bucle real, tecla por tecla.
+ const VIEW_SPEED=77,busy=(q)=>!!q.cinema||q.river==='jumping';
+ const frame=(w,dx,dy,dt)=>{
+  const jumped=(dx||dy)&&!busy(w.challenges)&&g.tryRiverStep(w,dx,dy);
+  if(jumped)return true;
+  if((dx||dy)&&!busy(w.challenges)&&w.challenges.river!=='returning'){
+   const len=Math.hypot(dx,dy),ndx=dx/len*VIEW_SPEED*dt,ndy=dy/len*VIEW_SPEED*dt;
+   const bx=w.x,by=w.y;
+   if(g.walkAllowed(w,w.x+ndx,w.y))w.x+=ndx;
+   if(g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;
+   return Math.abs(w.x-bx)+Math.abs(w.y-by)>1e-6;
+  }
+  return false;
+ };
+ // Caso 1: mantener "abajo" presionada 5 segundos reales a 60fps desde la salida exacta.
+ {const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};w.challenges.river='done';w.challenges.stone=5;w.challenges.currentStone=-1;
+  for(let i=0;i<300;i++)frame(w,0,1,1/60);
+  assert.ok(w.y<g.RIVER_TOP+78,`quedó en ${w.y}, debía detenerse antes de las piedras`);
+  assert.ok(!g.STONES.some(p=>Math.hypot(p.x-w.x,p.y-w.y)<20),'no debe terminar sobre ninguna piedra');
+  assert.ok(Math.hypot(g.RIVER_SHORE.x-w.x,g.RIVER_SHORE.y-w.y)>20,'no debe terminar en la orilla original');}
+ // Caso 2: alternar abajo/izquierda/derecha 8 segundos (una jugadora insistiendo), desde un x desplazado.
+ {const w={...world(),bloomed:true,progress:4,x:g.RIVER_EXIT.x-12,y:g.RIVER_EXIT.y};w.challenges.river='done';w.challenges.stone=5;w.challenges.currentStone=-1;
+  const dirs=[[0,1],[1,1],[-1,1],[0,1]];
+  for(let i=0;i<480;i++){const [dx,dy]=dirs[Math.floor(i/60)%dirs.length];frame(w,dx,dy,1/60);}
+  assert.ok(w.y<g.RIVER_TOP+80,`quedó en ${w.y}`);
+  assert.ok(!g.STONES.some(p=>Math.hypot(p.x-w.x,p.y-w.y)<20));}
+ // Caso 3: volver desde mucho más al norte (como si hubiera seguido jugando y regresa a pie).
+ {const w={...world(),bloomed:true,progress:4,x:320,y:g.RIVER_TOP-400};w.challenges.river='done';w.challenges.stone=5;w.challenges.currentStone=-1;
+  for(let i=0;i<900;i++)frame(w,0,1,1/60); // 15s reales sosteniendo "abajo"
+  assert.ok(w.y<g.RIVER_TOP+78,`quedó en ${w.y}`);
+  assert.ok(!g.STONES.some(p=>Math.hypot(p.x-w.x,p.y-w.y)<20));}
 });
 test('Constelación de dos rondas: error conserva la primera y Simón es opcional',()=>{
  const w={...world(),bloomed:true,progress:7,...g.PLANTS[1]};g.activateChallenge(w,g.nearAction(w));tick(w,4.3);
