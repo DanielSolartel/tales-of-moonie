@@ -67,6 +67,10 @@ export function extractPoses(atlas:HTMLImageElement,outfit:number) {
     const [ax,ay,bx,by]=EYES[outfit][pose];
     const mapX=(x:number)=>Math.round(pose===2?frontLeft+(x-x0-split)*scale:left+(x-x0)*scale);
     const anchor:FaceAnchor={eyes:[mapX(ax),mapX(bx)],y:Math.round(bottom+(ay-y0)*scale),offsets:[0,Math.round((by-ay)*scale)]};
+    // Poses 2 (prone, head turned) and 3 (rising, chin tilted up) foreshorten the far
+    // eye sharply; the standard lens radius reaches past it into the hairline, so those
+    // two specific poses use a smaller, still-deterministic lens anchored to the same eyes.
+    if(pose===2||pose===3){anchor.lensWidth=3.2;anchor.lensHeight=3.2;}
     return {tile,anchor};
   });
 }

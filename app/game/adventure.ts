@@ -12,7 +12,10 @@ export const LIGHTS=[{x:140,y:530},{x:302,y:650},{x:478,y:555}],HIDE_LABELS=['la
 export const STONES=[{x:252,y:231},{x:321,y:207},{x:394,y:232},{x:253,y:178},{x:394,y:178},{x:254,y:127},{x:321,y:153},{x:393,y:127},{x:321,y:98}].map(p=>({...p,y:p.y+RIVER_TOP}));
 export const RIVER_ROUTES=[[0,3,6,5,8],[2,4,6,7,8],[1,3,6,7,8]] as const;
 export const RIVER_SHORE={x:320,y:RIVER_TOP+312},RIVER_EXIT={x:320,y:RIVER_TOP+62};
-export const PLANTS=[{x:267,y:worldY(-1220)},{x:373,y:worldY(-1220)},{x:320,y:worldY(-1280)}];
+// Recomposición aprobada (21/09/2026): separa las tres plantas entre sí, de Simón (LANDMARKS.simon,
+// x:430 y:-1250) y de la tercera flor (THIRD_FLOWER, x:342 y:-1320), conservando el orden de índices
+// (0 luna creciente, 1 estrellada, 2 anillos) y el centrado dentro de la elipse jugable de walkAllowed.
+export const PLANTS=[{x:215,y:worldY(-1200)},{x:325,y:worldY(-1180)},{x:235,y:worldY(-1310)}];
 export const PATTERNS=[[1,0,2],[2,0,1,0,2]] as const,PATTERN=PATTERNS[0];
 export type CinemaKind='spirit'|'ritual'|'bloom2'|'bloom3'|'bookReveal'|'riverDemo'|'riverError'|'patternDemo'|'constellation';
 export type Cinema={kind:CinemaKind;time:number;duration:number;index:number;origin:Point;direction:Direction;cue:number};
@@ -54,7 +57,9 @@ export function walkAllowed(w:ChallengeWorld,x:number,y:number){
  if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-5)return w.bloomed&&w.progress>=2&&[x-7,x+7].every(xx=>onMazeTrail(xx,y-MAZE_TOP));
  if(y<=RIVER_BOTTOM&&y>=RIVER_TOP){
   if(w.progress<3)return false;
-  if(q.river==='done')return STONES.some(p=>distance({x,y},p)<16)||(y>RIVER_TOP+290&&x>285&&x<356)||(y<RIVER_TOP+78&&x>290&&x<350);
+  // Once solved, the stones and the shore-side channel close behind Moonie; only the
+  // narrow exit lip toward the forest stays walkable, so a return attempt stops there.
+  if(q.river==='done')return y<RIVER_TOP+78&&x>290&&x<350;
   if(y>RIVER_TOP+287)return x>285&&x<356;
   return false;
  }
@@ -66,15 +71,9 @@ export function walkAllowed(w:ChallengeWorld,x:number,y:number){
 // Explicit directional jumps make all nine rocks selectable, including wrong ones.
 export function tryRiverStep(w:ChallengeWorld,dx:number,dy:number):boolean{
  const q=w.challenges!;if(busy(q))return false;
- // A solved crossing remains traversable in either direction, with real jumps.
- if(q.river==='done'){
-  const endpoints=[...STONES,RIVER_EXIT,RIVER_SHORE];
-  const current=endpoints.findIndex(p=>distance(w,p)<24);if(current<0)return false;
-  const source=endpoints[current],len=Math.hypot(dx,dy);if(!len)return false;
-  const options=endpoints.map((p,i)=>({p,i,d:distance(source,p),dot:((p.x-source.x)*dx+(p.y-source.y)*dy)/len/(distance(source,p)||1)})).filter(v=>v.i!==current&&v.d<118&&v.dot>.65).sort((a,b)=>(1-a.dot)*90+a.d-((1-b.dot)*90+b.d));
-  if(!options.length)return current<9;
-  const chosen=options[0];q.river='jumping';q.returnFrom={x:w.x,y:w.y};q.jumpTo={...chosen.p};q.jumpIndex=chosen.i+20;q.riverTime=0;w.direction=dx?(dx>0?'right':'left'):(dy>0?'front':'back');return true;
- }
+ // A solved crossing never offers a jump back onto the stones or the shore: the stone-hop
+ // mechanic only exists to cross once. Onward movement past the exit uses plain walking.
+ if(q.river==='done')return false;
  if(q.river!=='crossing')return false;
  if(q.currentStone<0&&distance(w,RIVER_SHORE)>39)return false;
  const source=q.currentStone<0?RIVER_SHORE:STONES[q.currentStone];

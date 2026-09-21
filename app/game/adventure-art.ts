@@ -89,6 +89,13 @@ export class AdventureArt{
   const demo=s?.kind==='riverDemo';if(w.progress>=3&&w.y<RIVER_BOTTOM_SAFE&&w.y>RIVER_TOP-80){
    const cue=demo?Math.min(9,Math.floor(s.time/s.duration*10)):-1,idx=cue>=0?riverSequence(q)[cue%5]:-1;
    for(let i=0;i<24;i++){const x=160+i*71%320,y=RIVER_TOP+110+i*39%142;c.globalAlpha=.12+Math.sin(w.time*2+i)*.08;c.fillStyle='#b7d9ff';c.fillRect(x,Math.round(y),4+i%5,1);}c.globalAlpha=1;
+   if(q.river==='done'){
+    // Barrera natural discreta: justo al resolverse el cruce la corriente se marca más
+    // fuerte en el borde de salida, la misma línea donde walkAllowed ya bloquea el regreso.
+    const by=RIVER_TOP+78;c.save();c.strokeStyle='rgba(184,224,255,.32)';c.lineWidth=2;c.beginPath();c.moveTo(283,by);c.lineTo(357,by);c.stroke();
+    for(let i=0;i<16;i++){const x=286+i*(68/15),wob=Math.sin(w.time*1.6+i*.8)*2;c.globalAlpha=.24+Math.sin(w.time*2.3+i)*.1;c.fillStyle='#dcf0ff';c.fillRect(Math.round(x),Math.round(by+wob),3,1);}
+    c.restore();
+   }
    if(idx>=0){const p=STONES[idx],prev=STONES[riverSequence(q)[Math.max(0,cue%5-1)]],t=clamp((s!.time/s!.duration*10)%1/.65),x=prev.x+(p.x-prev.x)*t,y=prev.y+(p.y-prev.y)*t;glow(c,p.x,p.y-8,30,.38);c.strokeStyle='rgba(193,227,255,.7)';c.lineWidth=1;c.beginPath();c.ellipse(p.x,p.y+9,22+Math.sin(w.time*4)*3,7,0,0,Math.PI*2);c.stroke();for(let j=0;j<6;j++){const xx=x+Math.cos(w.time*3+j)*11,yy=y-15+Math.sin(w.time*3+j)*7;glow(c,xx,yy,5,.4);c.fillStyle='#fff0c8';c.fillRect(Math.round(xx),Math.round(yy),2,2);}}
    if(s?.kind==='riverError'){
     const p=STONES[s.index],t=s.time,depth=Math.round(Math.min(1,t/1.1)*31);

@@ -22,11 +22,24 @@ for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones física
 test('Piedra equivocada devuelve suavemente a la orilla y conserva la ruta',()=>{
  const w={...world(0),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);g.tryRiverStep(w,1,0);tick(w,.57);assert.equal(w.challenges.river,'returning');const x=w.x,y=w.y;tick(w,1.5);assert.notDeepEqual({x:w.x,y:w.y},{x,y});assert.notEqual(w.y,g.RIVER_SHORE.y);tick(w,7.5);assert.equal(w.challenges.river,'crossing');assert.equal(w.challenges.stone,0);assert.equal(w.challenges.riverRoute,0);assert.equal(w.y,g.RIVER_SHORE.y);
 });
-test('El arroyo resuelto se puede recorrer de vuelta sin caminar sobre el agua',()=>{
- const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};const q=w.challenges;q.river='done';q.stone=5;
- for(const [dx,dy] of [[0,1],[0,1],[0,1],[0,1]]){assert.ok(g.tryRiverStep(w,dx,dy));tick(w,.57);assert.equal(q.river,'done');}
- assert.equal(w.y,g.RIVER_SHORE.y);assert.equal(q.stone,5);assert.equal(w.progress,4);
+test('Tras completar el arroyo, el regreso por las piedras queda bloqueado de inmediato',()=>{
+ const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};const q=w.challenges;q.river='done';q.stone=5;q.currentStone=-1;
+ // En el instante en que el cruce se completa ya no se ofrece ningún salto de regreso.
+ for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]])assert.equal(g.tryRiverStep(w,dx,dy),false);
+ assert.equal(q.river,'done');assert.equal(q.stone,5);assert.equal(w.progress,4);
+ // Caminar hacia atrás se detiene de forma natural justo en el borde de salida: sin caída,
+ // sin teletransporte y sin reiniciar el reto ni perder el progreso.
+ const start={x:w.x,y:w.y};let moved=0;
+ for(let i=0;i<60;i++)if(g.walkAllowed(w,w.x,w.y+1)){w.y+=1;moved++;}
+ assert.ok(moved<20,`avanzó ${moved}px hacia el arroyo`);assert.ok(w.y<g.RIVER_TOP+78,'no debe entrar de nuevo a la zona de piedras');
+ assert.equal(q.river,'done');assert.equal(q.stone,5);assert.equal(w.progress,4);assert.notEqual(w.x,undefined);
+ // Ni las piedras ni el canal de la orilla original vuelven a ser transitables.
+ assert.equal(g.walkAllowed(w,g.STONES[8].x,g.STONES[8].y),false);
  assert.equal(g.walkAllowed(w,290,g.RIVER_TOP+250),false);
+ // Seguir de largo hacia el bosque, en cambio, funciona con normalidad.
+ assert.ok(g.walkAllowed(w,320,g.RIVER_TOP+40));
+ // Una partida nueva no conserva el bloqueo: freshChallenges vuelve a 'waiting'.
+ assert.equal(g.freshChallenges().river,'waiting');
 });
 test('Constelación de dos rondas: error conserva la primera y Simón es opcional',()=>{
  const w={...world(),bloomed:true,progress:7,...g.PLANTS[1]};g.activateChallenge(w,g.nearAction(w));tick(w,4.3);
