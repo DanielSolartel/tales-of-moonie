@@ -1,0 +1,23 @@
+INITIAL PROMPT
+Use case: stylized-concept.
+Asset type: polished top-down pixel-art background for Tales of Moonie compact forest maze game. Create a NEW composition using the two input images ONLY as style/color/texture references, NOT as layout references.
+Canvas: 1280 by 1440 pixels, exact 8:9 aspect, representing a 640 by 720 logical pixel world. Entire game map visible edge-to-edge, orthographic top-down, zero perspective foreshortening. All coordinates below use the logical 640x720 canvas with origin at top left.
+CRITICAL exact continuous brown earth path layout, width 65 logical pixels, gently rounded bends radius 25-35:
+Main path centerline starts at bottom entrance (342,720), north to (342,590), west to (175,590), north to (175,400), east to (425,400), north to (425,210), west to (350,210), north to top exit (350,0).
+Exactly two dead-end branches: from (342,590) east to (490,590); from (425,210) east to (530,210). Rounded dead ends.
+Exactly one SMALL LOOP on the LEFT of the lower northbound stretch: from junction (175,590) northwest via (85,570), north via (85,420), east back to junction (175,400). This thin tree island loop is the only cycle.
+There are exactly FOUR three-way junctions: (342,590), (175,590), (175,400), and (425,210). No other paths or crossings. Preserve every centerline coordinate; this map is used with matching game movement.
+Style: lush friendly blue nocturnal pixel-art forest with clearly defined crisp pixel clusters like the style references. Consistently scaled medium trees, trunks, dense natural undergrowth and ferns bordering the paths, cool cobalt/teal/navy foliage and warm muted brown earth. Subtle moonbeams without visible sky. Natural organic borders, tiny unobtrusive stones, no obstacles in the paths. Trees must NOT occlude traversable paths or the top/bottom exits. Brown earth must be clear and readable on every segment. Uniform scale throughout, compact ~two screens tall.
+Avoid all characters, text, symbols, UI, books, sky, moon discs, yellow dots, glowing navigation dots, flower breadcrumb trails, large clearings, extraneous branches, cropped blocked entrances, stretched or oversized trees. This is only a background game asset, no framing or mockup.
+
+CORRECTION PROMPT
+Edit this blue pixel-art maze game background. Keep exactly the same aesthetic, palette, tree scale, path texture, four junctions, and topology. Precisely relocate the entire path geometry to these normalized image positions. This relocation is the only requested change, repaint forest to accommodate:
+Canvas remains 8:9, representing logical 640x720.
+BOTTOM horizontal path (currently around 69% image height) must be moved DOWN to 82% of image height (y590). Its right deadend must end at x77% (x490), NOT near x85%. Bottom entrance at x53.4% (x342), runs up to that horizontal at 82%.
+MIDDLE horizontal path (currently around43% height) must move DOWN to55.6% height (y400). Right northbound stem at x66.4% (x425). Left vertical main stem at x27.3% (x175).
+TOP horizontal path (currently23% height) must move DOWN to29.2% height (y210). Top exit vertical path center must be x54.7% (x350), NOT51%. Top right branch ends at x82.8% (x530).
+Loop's outer left vertical stem must be at x13.3% (x85), NOT7.5%. It connects y420 to570, turning east to main-stem junctions (175,400) and(175,590). Loop island should be narrow,64px logical width, containing small undergrowth, not a huge tree.
+Main path exact centerline (342,720)→(342,590)→(175,590)→(175,400)→(425,400)→(425,210)→(350,210)→(350,0).
+Deadends (342,590)→(490,590) and(425,210)→(530,210). Loop (175,590)→(85,570)→(85,420)→(175,400).
+All paths width65 logicalpx, pleasant rounded corners. Entire exact 640x720 world visible, no cropping, no stretching. Clear routes, no vegetation over roads. No text, labels, characters, UI or gold lights.
+

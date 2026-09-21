@@ -1,0 +1,67 @@
+{
+  "mode": "built-in image_gen",
+  "initial": [
+    {
+      "key": "clearing-extension",
+      "prompt": "Use case: style-transfer. Asset type: top-down RPG pixel-art environment. Reference image is STYLE AND PALETTE REFERENCE only; generate a new southern extension of its clearing, no characters. Output landscape 16:9, designed on a logical 640x360 map. Match the precise detailed pixel texture, rich midnight blue canopy, teal moss, warm brown roots and earth, silver-blue moonlight, cozy calm mood. Top center path entrance at x320 leading into broad irregular walkable clearing across x80..560,y70..320. Rooted hollow tree on left centered(x120,y155); tall flowering bush lower middle centered(x300,y290); small reflective natural pool on right centered(x505,y170). Organic foliage border top should join original clearing bottom. Mostly open navigable ground; organic asymmetric boundaries, no geometric rings. No moon in sky, no characters, no labels, no spirit, no lunar flower, no text, no arrows.",
+      "ref": "clearing.png"
+    },
+    {
+      "key": "forest-maze",
+      "prompt": "Use case: style-transfer. Asset type: scrolling top-down RPG pixel-art forest map. Reference is STYLE ONLY, not its old path layout. Tall portrait 640x1080 logical map, high pixel art detail. Dark navy and cobalt canopy, silver blue moonlight, warm textured earth paths. IMPORTANT exact PATH CENTER network coordinates in logical pixels, map width640 height1080 with origin upper left: main winding connected route from bottom(342,1080) to A(342,920), B(170,920), C(170,660), D(430,660), E(430,390), F(250,390), then (250,150),(359,150),(359,0). Paths 56 logical pixels wide, edges irregular but centerlines follow geometry. Three short deadend branches: A east to(515,920) ending at hollow tree blue moths; D east to(530,660) ending at small lunar reflecting pool lookout; F west to(100,390) ending mossy stone ruins. Two looping connections B west(90,920), north(90,660), east C; D northeast(540,530), north(540,390), west E. Dense richly textured canopy fills nonpath space. Six readable intersections, no unintended shortcuts. Moonlight rays main path only. No moon sky, no guiding flowers, no text, arrows, dots, characters, labels.",
+      "ref": "hidden-path.png"
+    },
+    {
+      "key": "river-expanded",
+      "prompt": "Use case: style-transfer. Asset type: top-down RPG pixel-art river crossing. Reference image STYLE AND TEXTURE only. New landscape 16:9 map designed logical640x360. Horizontal blue river BROAD band y80 to280 across entire width, with earth bank top y0..65 and bottom y300..360, organic dense navy foliage at sides of banks. Nine broad natural detailed flat stepping rocks individually separated in water, center positions EXACTLY logical(250,268),(320,235),(390,268),(250,200),(390,200),(250,132),(320,165),(390,132),(320,98). Each rock approx44x32 logical, mossy silver grey with warm side facets. Center safe crossing routes zigzag, not straight row. Reflective detailed blue flowing water silver glints and small ripples, midnight blue forest, warm textured banks, detailed pixel art matching reference. No characters, no yellow dots, no signs, no text.",
+      "ref": "sendero.png"
+    }
+  ],
+  "sheets": [
+    {
+      "key": "lunar-plants",
+      "prompt": "Use case: stylized-concept. Asset type: transparent PNG pixel-art RPG lunar plants spritesheet, precisely 3 equal columns x 3 equal rows, 9 independent padded cells. Reference only for game outline style, detailed blue foliage pixel technique; NO CHARACTER in output. Each COLUMN is SAME plant throughout its 3 rows: left crescent lunar plant; middle stellate lunar plant with star shaped petals; right lunar plant with circular silver rings. Row1 dormant closed small muted bud, row2 visibly awakening half unfolded silver highlights, row3 fully open large luminous beautiful form. Three visually distinct plants, detailed roots and deep blue foliage base, layered petals, blue-silver highlights and readable silhouette. Polished cozy midnight magic RPG asset. True transparent background, no checkerboard painted, no text, no cell borders, no shadow rectangle. Generous clear spacing, no overlap. Each sprite fully within cell, exact regular grid. Square sheet.",
+      "ref": "atlas.png"
+    },
+    {
+      "key": "crescent-spirits",
+      "prompt": "Use case: stylized-concept. Asset type: transparent PNG pixel-art RPG crescent spirit animation sheet. Precisely 3 equal columns x 3 equal rows 9 independent padded cells. Reference is for crisp outlined detailed pixel-art asset style only; no character or plants. Columns are three subtly different crescent spirits, all visibly CRESCENT MOON SHAPES, silver crescent nucleus with thin glowing cyan outline, blue trailing tail made of flowing spirit energy. No faces, no eyes, not circular orbs. Rows are three actual flotation tail gesture animation frames of same spirit in column: row1 tail curls left, row2 hangs softly downward, row3 curls right. Keep crescent nucleus same size and position within each cell; vary actual tail geometry. Cozy mystical moonlight, navy blue silver palette. True transparent background, no painted checkerboard, no lettering, no border, no overlaps, generous padding, square sheet.",
+      "ref": "atlas.png"
+    },
+    {
+      "key": "moonie-interaction",
+      "prompt": "Use case: identity-preserve. Asset type: sprite sheet transparent PNG for approved Moonie character, EXACTLY4 equal columns x3 equal rows, full body each cell 48x64 logical, sheet square at high resolution. Reference image: LOCK identical Moonie face, black bob with blue night highlights, large dark eyes, warm skin, small proportions, polished pixel outlined art. Only poses change, outfits remain approved. COLUMN poses for EVERY row: col1 crouching reaching one hand down to roots (no roots prop), col2 leaning forward gently touching water with fingertips (no water prop), col3 startled balance arms extended sideways and knees bent, col4 airborne gentle jump knees tucked arms extended. These must be 4 distinct genuine poses, fully within each cell with generous spacing no overlap. ROW1 real outfit: black tank top, denim shorts, white trainers, blue-white cap, silver hoop earrings, silver moon-star-heart necklace. NO BOOK. ROW2 artist: cream top, lilac short overalls with exactly two blue/pink pencils, white-lilac shoes; NO CAP, NO JEWELRY, NO BOOK. ROW3 explorer: detailed white dress blue belt, short navy cape with silver crescent and2stars, brown boots; no cap no book. Preserve all outfit details and same identity. Genuine transparent background if possible, otherwise ONLY FLAT PURE GREEN #00ff00 background. NO CHECKERBOARD PATTERN, no text or labels, no props, no extra limbs.12 poses total.",
+      "ref": "atlas.png"
+    },
+    {
+      "key": "constellation-patch",
+      "prompt": "Use case: style-transfer. Asset type: localized top-down RPG pixel-art forest clearing background patch, landscape8:3 aspect, designed logical640x240. Reference style and palette only. Continuous central earthen forest path entering top center x320 and exiting bottom center x320, both open and seamless. Center fairly open navigable moonlit earth across x180..470,y40..200. Three distinct EMPTY natural planting pedestals: mossy rooted low earth beds or little silver rocks with empty soil center, around logical(230,150),(410,150),(320,50). Do not put plants on pedestals; separate sprites will overlay them. Navy detailed roots and cobalt canopy/foliage outside, soft moonlit textured warm earth inside. Cozy rich detailed pixel-art texture matches reference. No lunar flower, no spirit Simon, no Moonie, no plants baked into pedestals, no characters, no text, no moon sky, no arrows, no labels.",
+      "ref": "hidden-path.png"
+    }
+  ],
+  "edits": [
+    {
+      "key": "lunar-plants-final",
+      "prompt": "Use case: background-extraction. Edit this exact 3x3 sprite sheet. REMOVE the entire grey-white checkerboard background into genuinely transparent alpha channel, including holes between roots and petals. Preserve all nine plants, their exact artwork, precise grid positions, size, outlines and details unchanged. Do not paint a checkerboard; actual transparent PNG background is essential. No redesign, no text, no new elements.",
+      "ref": "/workspace/scratch/47fd9549d444/generated_images/exec-fb3d7eec-6772-4683-81d1-7d6cd4ecd342.png"
+    },
+    {
+      "key": "moonie-interaction-final",
+      "prompt": "Use case: precise-object-edit. Edit this exact 4-column3-row Moonie sheet. Keep every pose, face, hair, outfit, full-body scale, pixel-art appearance and cell arrangement identical. Two changes only: (1) REMOVE all earrings/jewelry from the ARTIST characters in MIDDLE ROW only; middle row ears must be bare warm skin, no silver earrings and no necklace. Keep top real-row silver hoops and necklace. (2) REMOVE green background into genuinely transparent PNG alpha. Preserve dark outlines and hair, no green fringe. No checkerboard pixels. 12 unchanged poses fully separate, no cropping, no new props or text.",
+      "ref": "/workspace/scratch/47fd9549d444/generated_images/exec-d49ec8c9-ed72-4451-af8b-798242203a1f.png"
+    }
+  ],
+  "finalEdits": [
+    {
+      "key": "moonie-clean",
+      "prompt": "Edit target exact Moonie sprite sheet. Keep ALL 12 poses, faces, hair, proportions, outfits, spacing unchanged. Only these precise fixes: remove ANY earrings from bottom EXPLORER row; top REAL row keeps its silver hoop earrings and wears one simple chain with 3 separate silver charms star, crescent moon, heart (not multiple necklaces). Middle ARTIST row already bare ears, keep no jewelry. Replace checkerboard background with perfectly flat pure green #00ff00 key background with no texture, no checkerboard, no shading. Do not move or resize any sprite. No new props. Preserve grid and detailed pixel-art outlines.",
+      "ref": "/workspace/scratch/47fd9549d444/generated_images/exec-048180c6-92b5-4d9c-9083-df1dd792075f.png"
+    },
+    {
+      "key": "constellation-final",
+      "prompt": "Use case: precise-object-edit. REMOVE ALL THREE raised circular stone/soil planting pedestals from the interior clearing, replacing each with continuous normal flat moonlit earthen floor matching surrounding soil. Keep entire forest perimeter, trees, foliage and paths completely unchanged. No raised circles, no circular rims, no stone platforms, no leftover roots in removed spots. Preserve exact 2048x768 landscape composition and detailed midnight blue pixel art style, no new objects.",
+      "ref": "/workspace/scratch/47fd9549d444/generated_images/exec-a2f5d065-0529-4bf5-bace-d6ce1f0ecd3d.png"
+    }
+  ],
+  "alpha": "Use case: background-extraction. Remove ONLY green background to genuine transparent alpha channel, clean cutout of exact 12 characters. Absolutely preserve all art, details, positions, poses, spacing and colors. No restyling. No new background of any kind, NO CHECKERBOARD. Actual transparent PNG alpha for game spritesheet is required. Keep all pixel outlines opaque."
+}
