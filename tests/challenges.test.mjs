@@ -43,6 +43,31 @@ for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones física
 test('Piedra equivocada devuelve suavemente a la orilla y conserva la ruta',()=>{
  const w={...world(0),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);g.tryRiverStep(w,1,0);tick(w,.57);assert.equal(w.challenges.river,'returning');const x=w.x,y=w.y;tick(w,1.5);assert.notDeepEqual({x:w.x,y:w.y},{x,y});assert.notEqual(w.y,g.RIVER_SHORE.y);tick(w,7.5);assert.equal(w.challenges.river,'crossing');assert.equal(w.challenges.stone,0);assert.equal(w.challenges.riverRoute,0);assert.equal(w.y,g.RIVER_SHORE.y);
 });
+test('La entrada del laberinto no choca con controles normales en ninguna columna del camino',()=>{
+ // Reproduce el fallo observado en Chromium: subiendo por x=312/320/327 Moonie se detenía en
+ // y≈-316/-321/-326 contra una pared diagonal entre el sendero anterior y el pasillo.
+ const VIEW_SPEED=77;
+ const frame=(w,dy,dt)=>{const ndy=dy*VIEW_SPEED*dt;if(g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;};
+ for(const x of [312,320,327,340]){
+  const w={x,y:-285,bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  for(let i=0;i<150;i++)frame(w,-1,1/60); // 2.5s reales hacia arriba
+  assert.ok(w.y<-345,`x=${x}: se detuvo en y=${w.y.toFixed(1)} antes de entrar`);
+  for(let i=0;i<150;i++)frame(w,1,1/60); // y de vuelta al sendero
+  assert.ok(w.y>-300,`x=${x}: no pudo volver a salir (y=${w.y.toFixed(1)})`);
+ }
+});
+test('Orilla opuesta: Moonie se detiene sobre la tierra, sin pisar el borde de la primera piedra',()=>{
+ // Estado exacto observado en el navegador tras cruzar con flechas: river 'done', stone 5,
+ // en RIVER_EXIT. Antes se detenía en y=-1422, a 20 unidades del centro de la piedra superior
+ // (y=-1402): los pies quedaban sobre su borde. Se exige un margen visual de 30 unidades.
+ const VIEW_SPEED=77,top=g.STONES.reduce((a,p)=>p.y<a.y?p:a);
+ for(const x of [294,320,346]){
+  const w={...world(),bloomed:true,progress:3,x,y:g.RIVER_EXIT.y};const q=w.challenges;q.river='done';q.stone=5;q.currentStone=-1;
+  for(let i=0;i<300;i++){const ndy=VIEW_SPEED/60;if(!g.tryRiverStep(w,0,1)&&g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;}
+  assert.ok(top.y-w.y>=30,`x=${x}: quedó a ${(top.y-w.y).toFixed(1)} del centro de la primera piedra`);
+  assert.equal(q.river,'done');assert.equal(q.stone,5);assert.equal(w.progress,3);
+ }
+});
 test('Tras completar el arroyo, el regreso por las piedras queda bloqueado de inmediato',()=>{
  const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};const q=w.challenges;q.river='done';q.stone=5;q.currentStone=-1;
  // En el instante en que el cruce se completa ya no se ofrece ningún salto de regreso.

@@ -25,8 +25,8 @@ export default function MoonieGame() {
   const [bloomNotice,setBloomNotice]=useState(false);
   const [nearby,setNearby]=useState<ReturnType<typeof nearAction>>(null);
   const [objective,setObjective]=useState<{text:string;detail?:string}>({text:'Explora el claro bajo la luna'});
-  // The stone-crossing retry cinema (riverError) zooms the camera in on Moonie's face;
-  // the persistent objective box must step aside only for that one close shot.
+  // True whenever the camera is in its 2x close shot (stone crossing, its demo and error
+  // shots). World-anchored UI would land on Moonie's face there, so it moves to safe corners.
   const [closeUp,setCloseUp]=useState(false);
   const [noticeOpacity,setNoticeOpacity]=useState(0);
   const [progress,setProgress]=useState<Progress>(0);
@@ -149,7 +149,7 @@ export default function MoonieGame() {
             w.walking=Math.abs(w.x-beforeX)+Math.abs(w.y-beforeY)>.01;
             if(w.walking){setMoved(true);stepTimer.current+=dt;if(stepTimer.current>.29){stepTimer.current=0;audio.current?.step();}}
           }
-          setNearby(nearAction(w));setObjective(objectiveFor(w));setCloseUp(w.challenges!.cinema?.kind==='riverError');
+          setNearby(nearAction(w));setObjective(objectiveFor(w));setCloseUp((renderer.current?.adventure.camera(w).close??0)>=.5);
           const notice=w.challenges!.notice;setBloomNotice(notice>0);setNoticeOpacity(Math.min(1,notice/.5,(4.5-notice)/.35));
           setCamera(gameCamera(w.y));setInSendero(w.y<0);
           audio.current?.setStream(Math.max(0,1-Math.abs(storyY(w.y)+480)/150));audio.current?.setFinalArea(storyY(w.y)<-1440);
@@ -243,7 +243,7 @@ export default function MoonieGame() {
         {scene==='forest'&&<>
           <div className={`quest${closeUp?' quest-safe':''}`} role="status"><span className="eyebrow">Objetivo</span><p>{objective.text}</p>{objective.detail&&<small>{objective.detail}</small>}</div>
           <div className={`flower-counter ${bloomed?'awake':''}`}><Flower2 size={18}/><span>Flores lunares: <strong>{thirdBloomed?'3':secondBloomed?'2':bloomed?'1':'0'}/3</strong></span></div>
-          {!dialogue&&!opening&&target&&<button className="interact-prompt" style={{left:`${target.x/640*100}%`,top:`${Math.max(80,target.y-camera-51)/360*100}%`}} onClick={advance}><kbd>E</kbd> {target.label}</button>}
+          {!dialogue&&!opening&&target&&<button className={`interact-prompt${closeUp?' prompt-safe':''}`} style={closeUp?undefined:{left:`${target.x/640*100}%`,top:`${Math.max(80,target.y-camera-51)/360*100}%`}} onClick={advance}><kbd>E</kbd> {target.label}</button>}
           {!dialogue&&!opening&&<div className="movement-hint"><span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Mover</span><span><kbd>E</kbd> Interactuar</span><span><kbd>Esc</kbd> Pausa</span></div>}
           {bloomNotice&&!dialogue&&<div className="bloom-toast" style={{opacity:noticeOpacity}} role="status"><Flower2 size={14}/> Una flor lunar ha despertado</div>}
         </>}

@@ -27,6 +27,20 @@ export class AdventureArt{
  async load(load:(p:string)=>Promise<HTMLImageElement>){
   const [grove,bridge,maze,river,clearing,spirits,plants,poses]=await Promise.all(['spirit-grove','grove-bridge','compact-moon-maze','river-trial','constellation-grove','crescent-spirits','lunar-plants','interaction-poses'].map(p=>load(`/assets/${p}.png`)));
   this.grove=mapTile(grove,640,360);this.bridge=mapTile(bridge,640,110);this.maze=mapTile(maze,640,MAZE_HEIGHT,true,true);
+  // Maze ENTRANCE edge (bottom). mapTile's generic ~29-row fade reached above the rows the
+  // forest below is drawn into, so part of it faded over empty canvas: that was the dark,
+  // hazy horizontal band. Rebuild the band opaque from the same image, then cut an organic
+  // bush silhouette with a short edge (no long see-through double exposure). The path keeps
+  // a longer dirt-over-dirt fade. The exit (top edge) is untouched.
+  {const mc=this.maze.getContext('2d')!;mc.imageSmoothingEnabled=false;
+   mc.clearRect(0,690,640,70);mc.drawImage(maze,0,maze.height*670/720,maze.width,maze.height*50/720,0,690,640,50);
+   mc.globalCompositeOperation='destination-out';
+   for(let x=0;x<640;x++){const onPath=x>304&&x<350,byTrail=x>=350&&x<440,n=.5+.3*Math.sin(x*.071+1.3)+.2*Math.sin(x*.19+.4),
+     // right of the path the old trail's dirt lies underneath: a deep cut there showed it as
+     // jagged peaks, so those columns only get a shallow, soft edge that blends into the path.
+     depth=onPath||byTrail?4:Math.round(6+30*n),edge=onPath||byTrail?9:3,b=740-depth;
+    for(let y=b-edge;y<760;y++){mc.fillStyle=`rgba(0,0,0,${clamp((y-(b-edge))/edge)})`;mc.fillRect(x,y,1,1);}}
+   mc.globalCompositeOperation='source-over';}
   this.river=mapTile(river,640,360,true,true);this.constellation=mapTile(clearing,640,240);this.spirits=sheet(spirits,3,3,28,28);this.plants=sheet(plants,3,3,80,88,[0,418,796,1254]);this.extract(poses);
   const join=(image:HTMLImageElement,top:number,bottom:number)=>{
    const tile=canvas(640,360),ctx=tile.getContext('2d')!;ctx.imageSmoothingEnabled=false;ctx.drawImage(image,0,0,640,360);

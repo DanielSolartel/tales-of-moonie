@@ -279,20 +279,17 @@ export class MoonieRenderer {
     const stage=this.stage||(this.stage=document.createElement('canvas'));stage.width=640;stage.height=360;
     const d=stage.getContext('2d')!;d.imageSmoothingEnabled=false;
     const segment=(top:number,bottom:number,offset:number,omitSign=false)=>{d.save();d.beginPath();d.rect(0,top-cam,640,bottom-top);d.clip();this.drawBase(d,legacy,reduced,cam+offset,true,omitSign);d.restore();};
-    segment(MAZE_BOTTOM-20,760,0);
+    segment(MAZE_BOTTOM-45,760,0); // starts above the maze's whole entrance edge: never fades over void
     segment(RIVER_BOTTOM-20,MAZE_TOP+20,MAZE_HEIGHT,true);
     segment(-5000,RIVER_TOP+20,WORLD_EXTENSION,true);
     d.drawImage(this.adventure.grove,0,340-cam);
     d.drawImage(this.adventure.bridge,0,300-cam);
     d.drawImage(this.adventure.maze,0,MAZE_TOP-cam-20);
-    // Alpha-fading two independently painted, detailed foliage textures at the maze's
-    // entrance produces a hazy "double exposure" band rather than a clean blend, however
-    // wide the fade (verified: widening it only spreads the haze). A soft shadow reads
-    // instead as the path dipping into denser shade — it doesn't touch the approved exit.
-    {const topY=MAZE_BOTTOM-80-cam,botY=MAZE_BOTTOM-2-cam;
-     const grad=d.createLinearGradient(0,topY,0,botY);
-     grad.addColorStop(0,'rgba(2,7,18,0)');grad.addColorStop(.4,'rgba(2,7,18,.58)');grad.addColorStop(.65,'rgba(2,7,18,.58)');grad.addColorStop(1,'rgba(2,7,18,0)');
-     d.fillStyle=grad;d.fillRect(0,topY,640,botY-topY);}
+    // Entrance path flare: the maze's own straight path texture widens and bends toward the
+    // wider trail below (which opens toward the sign), fading out as the old trail takes over.
+    for(let i=0;i<40;i++){const t=i/39,e=t*t*(3-2*t),cx=327+23*e,half=15+14*e;
+     d.globalAlpha=Math.min(1,(1-t)*1.5);d.drawImage(this.adventure.maze,312,650+(i%36),30,1,Math.round(cx-half),MAZE_BOTTOM-10+i-cam,Math.round(half*2),1);}
+    d.globalAlpha=1;
     d.drawImage(this.adventure.river,0,RIVER_TOP-cam-20);
     d.drawImage(this.adventure.mazeJoin,0,MAZE_TOP-185-cam);
     d.drawImage(this.adventure.riverJoin,0,RIVER_TOP-190-cam);

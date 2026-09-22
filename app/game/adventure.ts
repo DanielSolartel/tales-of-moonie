@@ -12,12 +12,11 @@ export const LIGHTS=[{x:140,y:530},{x:302,y:650},{x:478,y:555}],HIDE_LABELS=['la
 export const STONES=[{x:252,y:231},{x:321,y:207},{x:394,y:232},{x:253,y:178},{x:394,y:178},{x:254,y:127},{x:321,y:153},{x:393,y:127},{x:321,y:98}].map(p=>({...p,y:p.y+RIVER_TOP}));
 export const RIVER_ROUTES=[[0,3,6,5,8],[2,4,6,7,8],[1,3,6,7,8]] as const;
 export const RIVER_SHORE={x:320,y:RIVER_TOP+312},RIVER_EXIT={x:320,y:RIVER_TOP+62};
-// Segunda recomposición (revisión manual): las plantas seguían demasiado cerca de Simón
-// (LANDMARKS.simon, x:430 y:-1250) y de la tercera flor (THIRD_FLOWER, x:342 y:-1320).
-// Nuevo margen libre: ~45 unidades con Simón y ~43 con la flor (el ancho de Moonie, ~48,
-// funciona como referencia; no fue posible superar ambos límites a la vez sin desplazar
-// el centroide más de lo razonable). Separación entre plantas: 96-169 unidades.
-export const PLANTS=[{x:305,y:worldY(-1170)},{x:220,y:worldY(-1215)},{x:210,y:worldY(-1310)}];
+// Tercera recomposición (revisión en navegador): las distancias previas medían radios de
+// interacción, no el espacio visual. Centros ahora a >=168 de Simón (x430 y-1250), >=158 de la
+// tercera flor (x342 y-1320) y >=110 entre sí; fuera del sendero sur. Dos plantas quedan en el
+// borde oeste del claro: siguen alcanzables porque se activan a 49 unidades.
+export const PLANTS=[{x:174,y:worldY(-1207)},{x:280,y:worldY(-1174)},{x:184,y:worldY(-1317)}];
 export const PATTERNS=[[1,0,2],[2,0,1,0,2]] as const,PATTERN=PATTERNS[0];
 export type CinemaKind='spirit'|'ritual'|'bloom2'|'bloom3'|'bookReveal'|'riverDemo'|'riverError'|'patternDemo'|'constellation';
 export type Cinema={kind:CinemaKind;time:number;duration:number;index:number;origin:Point;direction:Direction;cue:number};
@@ -56,12 +55,20 @@ export function onMazeTrail(x:number,y:number){return [MAZE_ROUTE,...MAZE_BRANCH
 export function walkAllowed(w:ChallengeWorld,x:number,y:number){
  const q=w.challenges!;if(busy(q))return false;
  if(y>=352){if(y<440)return x>288&&x<351;return Math.hypot((x-320)/244,(y-558)/155)<1&&!LIGHTS.some((p,i)=>i!==2&&Math.hypot((x-p.x)/28,(y-p.y+8)/18)<1)&&!(x>493&&y>460&&y<590);}
- if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-5)return w.bloomed&&w.progress>=2&&[x-7,x+7].every(xx=>onMazeTrail(xx,y-MAZE_TOP));
+ // Maze band. The rows right at each seam accept either collision model (maze corridor
+ // or legacy trail), so the two meshes overlap instead of leaving 1-4px notches.
+ if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-8){
+  const open=w.bloomed&&w.progress>=2; // the story gate into the maze is unchanged
+  if(open&&[x-7,x+7].every(xx=>onMazeTrail(xx,y-MAZE_TOP)))return true;
+  if(!open||(y>=MAZE_TOP-5&&y<=MAZE_BOTTOM-8))return false;
+ }
  if(y<=RIVER_BOTTOM&&y>=RIVER_TOP){
   if(w.progress<3)return false;
   // Once solved, the stones and the shore-side channel close behind Moonie; only the
   // narrow exit lip toward the forest stays walkable, so a return attempt stops there.
-  if(q.river==='done')return y<RIVER_TOP+78&&x>290&&x<350;
+  // Stop on the bank itself: 34px north of the first stone's centre (y-1402), so her
+  // feet never overlap its top edge. RIVER_EXIT (y-1438) stays inside for the landing.
+  if(q.river==='done')return y<RIVER_TOP+64&&x>290&&x<350;
   if(y>RIVER_TOP+287)return x>285&&x<356;
   return false;
  }
