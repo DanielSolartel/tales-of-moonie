@@ -16,7 +16,7 @@ export const RIVER_SHORE={x:320,y:RIVER_TOP+312},RIVER_EXIT={x:320,y:RIVER_TOP+6
 // interacción, no el espacio visual. Centros ahora a >=168 de Simón (x430 y-1250), >=158 de la
 // tercera flor (x342 y-1320) y >=110 entre sí; fuera del sendero sur. Dos plantas quedan en el
 // borde oeste del claro: siguen alcanzables porque se activan a 49 unidades.
-export const PLANTS=[{x:174,y:worldY(-1207)},{x:280,y:worldY(-1174)},{x:184,y:worldY(-1317)}];
+export const PLANTS=[{x:174,y:worldY(-1207)},{x:280,y:worldY(-1174)},{x:260,y:worldY(-1256)}]; // 3.ª planta: sobre la tierra medida del claro (antes bajo las copas del noroeste)
 export const PATTERNS=[[1,0,2],[2,0,1,0,2]] as const,PATTERN=PATTERNS[0];
 export type CinemaKind='spirit'|'ritual'|'bloom2'|'bloom3'|'bookReveal'|'riverDemo'|'riverError'|'patternDemo'|'constellation';
 export type Cinema={kind:CinemaKind;time:number;duration:number;index:number;origin:Point;direction:Direction;cue:number};
@@ -122,7 +122,7 @@ export function tickChallenges(w:ChallengeWorld,dt:number){
   if(t===1){if(q.jumpIndex>=20){q.river='done';q.currentStone=q.jumpIndex<29?q.jumpIndex-20:-1;}else if(q.jumpIndex===9){q.river='done';q.currentStone=-1;}else if(q.jumpIndex===riverSequence(q)[q.stone]){q.currentStone=q.jumpIndex;q.stone++;q.river='crossing';sound(q,q.stone);}else{q.currentStone=q.jumpIndex;q.riverAttempts++;q.river='returning';startCinema(w,'riverError',q.jumpIndex,q.riverAttempts===1?3.5:2);}}return;
  }
  if(!w.bloomed&&!q.lights.every(Boolean))q.searchTime+=dt;
- if(inMaze(w.y))q.mazeTime+=dt;else if(w.y<=MAZE_TOP&&w.progress===2&&!q.mazeDone){q.mazeDone=true;startCinema(w,'bookReveal',0,3.5);}
+ if(inMaze(w.y))q.mazeTime+=dt;else if(w.y<=MAZE_TOP&&w.progress===2&&!q.mazeDone){q.mazeDone=true;} // objective -> "Examina el segundo libro"; no freeze, no camera push (felt like a collision)
  const objective=objectiveFor(w),d=distance(w,objective.target);
  if(q.lastKey!==objective.text||d<q.bestDistance-8){q.idle=0;q.bestDistance=d;q.lastKey=objective.text;}else q.idle+=dt;
 }
@@ -138,3 +138,15 @@ export function objectiveFor(w:ChallengeWorld):{text:string;detail?:string;targe
  if(w.progress===7){if(q.pattern==='done')return at('Despierta la tercera flor',landmark('flower3'));return at(q.pattern==='showing'?'Observa la constelación':`Repite el patrón · Ronda ${q.round+1}/2`,PLANTS[q.pattern==='input'?patternSequence(q)[q.patternStep]:1],q.pattern==='waiting'?'E junto a una planta para comenzar':q.pattern==='showing'?'Espera a que termine la estrella':`Camina y pulsa E · ${q.patternStep}/${patternSequence(q).length}`);}
  return at(storyY(w.y)>-1460?'Entra al claro final':distance(w,landmark('chest'))<59?'Abre el cofre':'Acércate al cofre',landmark('chest'));
 }
+
+// Moon rays over the correct maze route (Documento Maestro: "rayos de luna que atraviesan las
+// copas", intensified at 45 s). They are scenery: nothing here depends on which side of a maze
+// mouth Moonie stands on (drawing them only while inside toggled a light at every crossing).
+// Point 7 sits on the exit mouth and its beam straddled the boundary, so it casts none.
+export function mazeRays(q:Challenges,time:number){
+ const level=Math.max(0,Math.min(1,(q.mazeTime-45)/2)),dots=q.mazeTime>=75;
+ return MAZE_ROUTE.slice(1,7).map((p,k)=>({x:p.x,y:p.y+MAZE_TOP,next:MAZE_ROUTE[k+2],alpha:.035+(.065+Math.sin(time+k+1)*.025)*level,dots}));
+}
+// Guidance glow at the objective. While the maze is unsolved and has been entered, it depends on
+// maze time on both sides of the entrance; otherwise on idle time. Never on the side of a mouth.
+export const guideGlowActive=(w:ChallengeWorld)=>{const q=w.challenges!;return !w.bloomed?q.searchTime>=50:(w.progress===2&&!q.mazeDone&&q.mazeTime>0)?q.mazeTime>=105:q.idle>=45;};

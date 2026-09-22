@@ -1,4 +1,4 @@
-import { LIGHTS, PLANTS, STONES, MAZE_TOP, MAZE_HEIGHT, MAZE_ROUTE, RIVER_TOP, RIVER_BOTTOM, worldY, objectiveFor, patternSequence, riverSequence, gameCamera, inMaze } from './adventure';
+import { LIGHTS, PLANTS, STONES, MAZE_TOP, MAZE_HEIGHT, MAZE_ROUTE, RIVER_TOP, RIVER_BOTTOM, worldY, objectiveFor, patternSequence, riverSequence, gameCamera, mazeRays, guideGlowActive } from './adventure';
 import type { World } from './render';
 import type { Look } from './story';
 import { personalizePose } from './poses';
@@ -99,7 +99,8 @@ export class AdventureArt{
    c.globalAlpha=1;
    if(!q.lights[i]||active)for(let n=0;n<7;n++){const a=(w.time*.35+n/7)%1;c.globalAlpha=(1-a)*(q.searchTime>25?.8:.3);c.fillStyle='#c1e8ff';c.fillRect(Math.round(p.x+Math.sin(n*2.4)*18),Math.round(p.y-10-a*33),1+n%2,1);}c.globalAlpha=1;
   });
-  if(inMaze(w.y)){const help=q.mazeTime>=105?3:q.mazeTime>=75?2:q.mazeTime>=45?1:0;for(const [i,p] of MAZE_ROUTE.entries()){if(i===0||i>7)continue;const y=p.y+MAZE_TOP;c.save();c.globalAlpha=help?.1+Math.sin(w.time+i)*.025:.035;const beam=c.createLinearGradient(p.x-55,y-135,p.x,y);beam.addColorStop(0,'#deecff');beam.addColorStop(1,'rgba(196,225,255,0)');c.fillStyle=beam;c.beginPath();c.moveTo(p.x-70,y-135);c.lineTo(p.x-25,y-135);c.lineTo(p.x+30,y+20);c.lineTo(p.x-30,y+20);c.fill();c.restore();if(help>=2)for(let j=0;j<5;j++){const t=(w.time*.2+j/5)%1,next=MAZE_ROUTE[i+1]||p;c.fillStyle='rgba(175,208,234,.55)';c.fillRect(Math.round(p.x+(next.x-p.x)*t),Math.round(y+(next.y-p.y)*t),3,1);}}}
+  // Moon rays are scenery, never toggled by Moonie's side of a maze mouth (see mazeRays).
+  for(const r of mazeRays(q,w.time)){c.save();c.globalAlpha=r.alpha;const beam=c.createLinearGradient(r.x-55,r.y-135,r.x,r.y);beam.addColorStop(0,'#deecff');beam.addColorStop(1,'rgba(196,225,255,0)');c.fillStyle=beam;c.beginPath();c.moveTo(r.x-70,r.y-135);c.lineTo(r.x-25,r.y-135);c.lineTo(r.x+30,r.y+20);c.lineTo(r.x-30,r.y+20);c.fill();c.restore();if(r.dots)for(let j=0;j<5;j++){const t=(w.time*.2+j/5)%1;c.fillStyle='rgba(175,208,234,.55)';c.fillRect(Math.round(r.x+(r.next.x-r.x)*t),Math.round(r.y+(r.next.y+MAZE_TOP-r.y)*t),3,1);}}
   const demo=s?.kind==='riverDemo';if(w.progress>=3&&w.y<RIVER_BOTTOM_SAFE&&w.y>RIVER_TOP-80){
    const cue=demo?Math.min(9,Math.floor(s.time/s.duration*10)):-1,idx=cue>=0?riverSequence(q)[cue%5]:-1;
    for(let i=0;i<24;i++){const x=160+i*71%320,y=RIVER_TOP+110+i*39%142;c.globalAlpha=.12+Math.sin(w.time*2+i)*.08;c.fillStyle='#b7d9ff';c.fillRect(x,Math.round(y),4+i%5,1);}c.globalAlpha=1;
@@ -130,7 +131,7 @@ export class AdventureArt{
    PLANTS.forEach((p,i)=>{const state=q.pattern==='done'||seq.slice(0,q.patternStep).includes(i as never)?2:lit===i?1:0;glow(c,p.x,p.y-40,state?51:32,state?.26:.09);c.drawImage(this.plants[state][i],p.x-40,p.y-84);});
    if(s?.kind==='constellation'){const t=clamp(s.time/s.duration),x=295+(342-295)*t,y=worldY(-1240)+(worldY(-1320)-worldY(-1240))*t;glow(c,x,y-25,45,.3*Math.sin(t*Math.PI));}
   }
-  const edgeHelp=!w.bloomed?q.searchTime>=50:inMaze(w.y)?q.mazeTime>=105:q.idle>=45;if(edgeHelp&&!s&&!w.motion&&!w.reading&&w.scene==='forest'){const p=objectiveFor(w).target;glow(c,Math.max(24,Math.min(616,p.x)),Math.max(cam+95,Math.min(cam+330,p.y))-12,24,.25+Math.sin(w.time*2)*.08);}
+  const edgeHelp=guideGlowActive(w);if(edgeHelp&&!s&&!w.motion&&!w.reading&&w.scene==='forest'){const p=objectiveFor(w).target;glow(c,Math.max(24,Math.min(616,p.x)),Math.max(cam+95,Math.min(cam+330,p.y))-12,24,.25+Math.sin(w.time*2)*.08);}
  c.restore();}
 }
 const RIVER_BOTTOM_SAFE=RIVER_BOTTOM+40;

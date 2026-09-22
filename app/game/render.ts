@@ -188,6 +188,41 @@ export class MoonieRenderer {
     paintFace(ctx,look,faceAnchor(look,direction));
     this.variants.set(key,c);return c;
   }
+  // ---- Maze entrance ground (trees and collision untouched) ----
+  // Measured: the maze path runs straight down, axis x~333, ~29 wide. The old background's trail
+  // meets that axis again only at y~-290 (x311-357); between y-350 and -300 it bends right toward
+  // the old route (axis ~371-378), so two paths met at an angle. (1) entryCover hides that bend
+  // with ground mirrored from the left of the path; (2) entryPath continues the maze path
+  // straight on the same axis, widening 29->42, organic edges, fading into the trail below.
+  private entryA?:HTMLCanvasElement;private entryMaskB?:HTMLCanvasElement;private entryTmp?:HTMLCanvasElement;
+  private static noise(x:number,y:number){const h=(a:number,b:number)=>{const s=Math.sin(a*127.1+b*311.7)*43758.5453;return s-Math.floor(s);};
+    const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),a=h(xi,yi),b=h(xi+1,yi),c=h(xi,yi+1),e=h(xi+1,yi+1);
+    return a+(b-a)*sx+(c-a)*sy+(a-b-c+e)*sx*sy;}
+  private static entryAxis(wy:number){const t=Math.max(0,Math.min(1,(wy+352)/62)),s=t*t*(3-2*t);return {c:333+s,hw:14.5+6.5*s};}
+  private entryPath(d:CanvasRenderingContext2D,cam:number){
+    const X0=293,Y0=-362,W=80,H=78;if(Y0+H-cam<0||Y0-cam>d.canvas.height)return;
+    if(!this.entryA){const maze=this.adventure.maze,src=maze.getContext('2d')!.getImageData(0,0,maze.width,maze.height).data,out=document.createElement('canvas');out.width=W;out.height=H;
+      const oc=out.getContext('2d')!,img=oc.createImageData(W,H),p=img.data;
+      for(let py=0;py<H;py++){const wy=Y0+py,{c,hw}=MoonieRenderer.entryAxis(wy),va=Math.max(0,Math.min(1,(wy+358)/10))*Math.max(0,Math.min(1,(-284-wy)/16));if(va<=0)continue;
+        const row=Math.round(wy-72-(MAZE_TOP-20));
+        for(let px=0;px<W;px++){const wx=X0+px,edge=hw+(MoonieRenderer.noise(wx/3.5,wy/3.5)-.5)*5,a=Math.max(0,Math.min(1,(edge-Math.abs(wx-c))/2.2))*va;if(a<=0)continue;
+          const u=Math.round(wx-c)+12,m=((u%25)+25)%25,sx=320+(Math.floor(u/25)%2?24-m:m),si=(row*maze.width+sx)*4,o=(py*W+px)*4;
+          p[o]=src[si];p[o+1]=src[si+1];p[o+2]=src[si+2];p[o+3]=Math.round(src[si+3]*a);}}
+      oc.putImageData(img,0,0);this.entryA=out;}
+    d.drawImage(this.entryA,X0,Y0-cam);
+  }
+  private entryCover(d:CanvasRenderingContext2D,cam:number){
+    const X0=344,Y0=-358,W=60,H=64,LIFT=18,sy0=Y0-cam,r0=Math.max(0,-sy0,LIFT-sy0),r1=Math.min(H,d.canvas.height-sy0);if(r1<=r0)return; // LIFT: source 18px higher so the mirror never pairs features side by side
+    if(!this.entryMaskB){const m=document.createElement('canvas');m.width=W;m.height=H;const mc=m.getContext('2d')!,img=mc.createImageData(W,H),p=img.data;
+      for(let py=0;py<H;py++){const wy=Y0+py,{c,hw}=MoonieRenderer.entryAxis(wy),right=(wy<-342?402:379)+(MoonieRenderer.noise(wy/4,7.3)-.5)*6,vb=Math.max(0,Math.min(1,(-294-wy)/10));
+        for(let px=0;px<W;px++){const wx=X0+px,left=c+hw-3+(MoonieRenderer.noise(wx/4,wy/4)-.5)*4;
+          p[(py*W+px)*4+3]=Math.round(Math.max(0,Math.min(1,(wx-left)/3))*Math.max(0,Math.min(1,(right-wx)/4))*vb*255);}}
+      mc.putImageData(img,0,0);this.entryMaskB=m;const t=document.createElement('canvas');t.width=W;t.height=H;this.entryTmp=t;}
+    const t=this.entryTmp!,tc=t.getContext('2d')!;tc.imageSmoothingEnabled=false;tc.globalCompositeOperation='source-over';tc.clearRect(0,0,W,H);
+    tc.save();tc.translate(W,0);tc.scale(-1,1);tc.drawImage(d.canvas,666-X0-W,sy0+r0-LIFT,W,r1-r0,0,r0,W,r1-r0);tc.restore(); // mirror about the path axis x=333
+    tc.globalCompositeOperation='destination-in';tc.drawImage(this.entryMaskB!,0,0);tc.globalCompositeOperation='source-over';
+    d.drawImage(t,X0,sy0);
+  }
   drawCharacter(ctx:CanvasRenderingContext2D,look:Look,direction:Direction,x:number,y:number,scale=1,frame=0,state:Animation='idle') {
     const key=`${look.outfit}/${look.skin}/${look.face}/${direction}/${state}/${frame}`;
     if(!this.frames.has(key)){
@@ -284,12 +319,9 @@ export class MoonieRenderer {
     segment(-5000,RIVER_TOP+20,WORLD_EXTENSION,true);
     d.drawImage(this.adventure.grove,0,340-cam);
     d.drawImage(this.adventure.bridge,0,300-cam);
+    this.entryCover(d,cam); // ground only: hides the old trail's bend below the maze mouth
     d.drawImage(this.adventure.maze,0,MAZE_TOP-cam-20);
-    // Entrance path flare: the maze's own straight path texture widens and bends toward the
-    // wider trail below (which opens toward the sign), fading out as the old trail takes over.
-    for(let i=0;i<40;i++){const t=i/39,e=t*t*(3-2*t),cx=327+23*e,half=15+14*e;
-     d.globalAlpha=Math.min(1,(1-t)*1.5);d.drawImage(this.adventure.maze,312,650+(i%36),30,1,Math.round(cx-half),MAZE_BOTTOM-10+i-cam,Math.round(half*2),1);}
-    d.globalAlpha=1;
+    this.entryPath(d,cam);  // ground only: the maze path continues straight into the trail
     d.drawImage(this.adventure.river,0,RIVER_TOP-cam-20);
     d.drawImage(this.adventure.mazeJoin,0,MAZE_TOP-185-cam);
     d.drawImage(this.adventure.riverJoin,0,RIVER_TOP-190-cam);

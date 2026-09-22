@@ -12,7 +12,10 @@ test('Los espíritus se liberan al terminar su cinemática, sin duplicados',()=>
 test('Laberinto compacto: cuatro cruces, dos desvíos y un bucle reversibles',()=>{
  const w={...world(),bloomed:true,progress:2};
  for(const points of [g.MAZE_ROUTE,...g.MAZE_BRANCHES])for(let i=0;i<points.length-1;i++){const a=points[i],b=points[i+1],n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y));for(let j=0;j<=n;j++){const t=j/n,x=a.x+(b.x-a.x)*t,y=g.MAZE_TOP+a.y+(b.y-a.y)*t;assert.ok(g.walkAllowed(w,x,y),`path ${x},${y}`);}}
- assert.equal(g.walkAllowed(w,10,-700),false);assert.equal(g.walkAllowed({...w,progress:1},342,-345),false);w.y=g.MAZE_TOP;g.tickChallenges(w,.02);assert.equal(w.challenges.mazeDone,true);assert.equal(w.challenges.cinema.kind,'bookReveal');
+ assert.equal(g.walkAllowed(w,10,-700),false);assert.equal(g.walkAllowed({...w,progress:1},342,-345),false);w.y=g.MAZE_TOP;g.tickChallenges(w,.02);assert.equal(w.challenges.mazeDone,true);
+ // Salir ya no congela a Moonie ni empuja la cámara (se sentía como un choque): sin cinemática,
+ // y el objetivo cambia de inmediato al segundo libro.
+ assert.equal(w.challenges.cinema,null);assert.equal(g.busy(w.challenges),false);assert.equal(g.objectiveFor(w).text,'Examina el segundo libro');
 });
 test('La salida del laberinto no atasca a Moonie con controles normales',()=>{
  // Réplica del bucle real de movimiento (igual que el test del arroyo de más abajo):
@@ -42,6 +45,60 @@ for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones física
 });
 test('Piedra equivocada devuelve suavemente a la orilla y conserva la ruta',()=>{
  const w={...world(0),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);g.tryRiverStep(w,1,0);tick(w,.57);assert.equal(w.challenges.river,'returning');const x=w.x,y=w.y;tick(w,1.5);assert.notDeepEqual({x:w.x,y:w.y},{x,y});assert.notEqual(w.y,g.RIVER_SHORE.y);tick(w,7.5);assert.equal(w.challenges.river,'crossing');assert.equal(w.challenges.stone,0);assert.equal(w.challenges.riverRoute,0);assert.equal(w.y,g.RIVER_SHORE.y);
+});
+test('Salida del laberinto continua: sin congelarse, sin retroceso y con regreso libre',()=>{
+ // Réplica del bucle real (tickChallenges + movimiento por ejes a 77 u/s, 60 fps). Antes, la
+ // primera salida congelaba 210 cuadros en 'bookReveal' mientras la cámara avanzaba y volvía.
+ const SP=77/60;
+ for(const [x0,dx] of [[312,0],[328,0],[344,0],[320,1],[336,-1]]){
+  const w={x:x0,y:g.MAZE_TOP+30,bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const len=Math.hypot(dx,1);let prev=w.y;
+  for(let i=0;i<180;i++){
+   g.tickChallenges(w,1/60);assert.equal(w.challenges.cinema,null,`x0=${x0}: cinemática en el cuadro ${i}`);
+   const nx=dx/len*SP,ny=-1/len*SP;if(g.walkAllowed(w,w.x+nx,w.y))w.x+=nx;if(g.walkAllowed(w,w.x,w.y+ny))w.y+=ny;
+   assert.ok(w.y<=prev+1e-9,`x0=${x0}: retrocedió en el cuadro ${i} (${prev.toFixed(2)} -> ${w.y.toFixed(2)})`);prev=w.y;
+  }
+  assert.ok(w.y<g.MAZE_TOP-40,`x0=${x0}: no salió (y=${w.y.toFixed(1)})`);assert.equal(w.challenges.mazeDone,true);
+  const tx=w.x;w.x=328;for(let i=0;i<150;i++){g.tickChallenges(w,1/60);if(g.walkAllowed(w,w.x,w.y+SP))w.y+=SP;}
+  assert.ok(w.y>g.MAZE_TOP+20,`desde (${tx.toFixed(0)}): no pudo volver a entrar (y=${w.y.toFixed(1)})`);
+ }
+});
+test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
+ // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
+ // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.
+ const SP=77/60;
+ // Un laberinto sin resolver solo se cruza de ida y vuelta por la ENTRADA (salir lo resuelve una
+ // única vez); resuelto, se cruza por la SALIDA. Ambos casos, con y sin ayuda de 45/105 s.
+ for(const [mazeTime,mazeDone,mouth] of [[0,true,'salida'],[60,true,'salida'],[120,true,'salida'],[0,false,'entrada'],[60,false,'entrada'],[120,false,'entrada']]){
+  const edge=mouth==='salida'?g.MAZE_TOP:g.MAZE_BOTTOM,sideIn=y=>mouth==='salida'?y>edge:y<edge;
+  const w={x:328,y:mouth==='salida'?edge+40:edge-40,bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const q=w.challenges;q.mazeTime=mazeTime;q.mazeDone=mazeDone;g.tickChallenges(w,1/60);
+  let t=20,before=g.mazeRays(q,t),glow=g.guideGlowActive(w),crossings=0,wasIn=sideIn(w.y);
+  for(let n=0;n<6;n++)for(const dir of (mouth==='salida'?[-1,1]:[1,-1]))for(let i=0;i<80;i++){
+   t+=1/60;w.time=t;g.tickChallenges(w,1/60);if(g.walkAllowed(w,w.x,w.y+dir*SP))w.y+=dir*SP;
+   if(sideIn(w.y)!==wasIn){crossings++;wasIn=sideIn(w.y);}
+   const rays=g.mazeRays(q,t);assert.equal(rays.length,6);
+   for(const [k,r] of rays.entries()){assert.ok(r.y>g.MAZE_TOP+40,'ningún rayo sobre la boca de salida');assert.ok(Math.abs(r.alpha-before[k].alpha)<.004,`salto de luz (${mouth}, ${mazeTime}s)`);}
+   assert.equal(g.guideGlowActive(w),glow,`el resplandor de guía cambió al cruzar la ${mouth} (${mazeTime}s)`);
+   before=rays;
+  }
+  assert.equal(q.mazeDone,mazeDone,'cruzar no cambia el estado del laberinto');
+  assert.ok(crossings>=10,`solo ${crossings} cruces de la ${mouth}`);
+ }
+});
+test('La tercera planta del minijuego queda en el suelo abierto del claro, junto a las otras dos',()=>{
+ // Coordenadas de historia: Simón (430,-1250) y tercera flor lunar (342,-1320), de story.ts.
+ const P=g.PLANTS.map(p=>({x:p.x,y:g.storyY(p.y)})),e=p=>Math.hypot((p.x-320)/143,(p.y+1254)/107),d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+ assert.deepEqual(P.slice(0,2),[{x:174,y:-1207},{x:280,y:-1174}],'las dos primeras no se mueven');
+ assert.ok(e(P[2])<=.9,`la tercera sigue bajo las copas (elipse ${e(P[2]).toFixed(2)})`);
+ // Posición elegida sobre la tierra medida píxel a píxel en el dibujo del claro (las copas del
+ // noroeste quedan fuera). Hueco visual con la flor > ancho de Moonie; Simón conserva >=168.
+ assert.ok(d(P[2],{x:430,y:-1250})>=168&&d(P[2],{x:342,y:-1320})>=100,'separada de Simón y de la flor lunar');
+ assert.ok(d(P[2],P[0])>=80&&d(P[2],P[1])>=80,'no se superpone con las otras plantas');
+ assert.ok(e(P[2])<=.5,'en el interior del claro, no en su borde');
+ const w={bloomed:true,progress:7,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+ let reach=false;for(let a=0;a<360&&!reach;a+=10)for(let r=26;r<=46&&!reach;r+=4){const x=g.PLANTS[2].x+Math.cos(a*Math.PI/180)*r,y=g.PLANTS[2].y+Math.sin(a*Math.PI/180)*r;if(g.walkAllowed(w,x,y))reach=true;}
+ assert.ok(reach,'se puede llegar a su zona de interacción');
 });
 test('La entrada del laberinto no choca con controles normales en ninguna columna del camino',()=>{
  // Reproduce el fallo observado en Chromium: subiendo por x=312/320/327 Moonie se detenía en
