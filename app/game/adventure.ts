@@ -57,11 +57,16 @@ export function walkAllowed(w:ChallengeWorld,x:number,y:number){
  if(y>=352){if(y<440)return x>288&&x<351;return Math.hypot((x-320)/244,(y-558)/155)<1&&!LIGHTS.some((p,i)=>i!==2&&Math.hypot((x-p.x)/28,(y-p.y+8)/18)<1)&&!(x>493&&y>460&&y<590);}
  // Maze band. The rows right at each seam accept either collision model (maze corridor
  // or legacy trail), so the two meshes overlap instead of leaving 1-4px notches.
- if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-8){
-  const open=w.bloomed&&w.progress>=2; // the story gate into the maze is unchanged
-  if(open&&[x-7,x+7].every(xx=>onMazeTrail(xx,y-MAZE_TOP)))return true;
-  if(!open||(y>=MAZE_TOP-5&&y<=MAZE_BOTTOM-8))return false;
- }
+ const open=w.bloomed&&w.progress>=2; // the story gate into the maze is unchanged
+ const mazeAt=(ly:number)=>[x-7,x+7].every(xx=>onMazeTrail(xx,ly));
+ const legacyAt=(wy:number)=>canWalk(x,storyY(wy),w.bloomed,w.progress,w.time-w.secondBloomTime,w.time-w.thirdBloomTime);
+ // Seam windows at both maze mouths. Where the maze-corridor model meets the legacy-trail
+ // model their edges disagreed by a few pixels, leaving 1-5px slivers that pinned a player
+ // hugging an edge (verified in Chromium). Across each window a column is walkable only if
+ // it is walkable on BOTH sides, so every column is either open straight through or closed.
+ if(open&&y>MAZE_TOP-11&&y<MAZE_TOP+6)return mazeAt(6)&&legacyAt(MAZE_TOP-11);
+ if(open&&y>MAZE_BOTTOM-6&&y<MAZE_BOTTOM+11)return mazeAt(MAZE_BOTTOM-MAZE_TOP-6)&&legacyAt(MAZE_BOTTOM+11);
+ if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-5)return open&&mazeAt(y-MAZE_TOP);
  if(y<=RIVER_BOTTOM&&y>=RIVER_TOP){
   if(w.progress<3)return false;
   // Once solved, the stones and the shore-side channel close behind Moonie; only the

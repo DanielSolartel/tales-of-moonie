@@ -130,8 +130,9 @@ function onTrail(x:number,y:number) {
   if(Math.hypot((x-327)/30,(y+376)/45)<1)return true;
   // Same fix at the maze ENTRANCE: the legacy tube drifts to x>=332 just below the maze,
   // whose corridor is x312-342, so walking straight up the visible path hit a diagonal
-  // wall at (306,-313)-(334,-331). This ellipse joins both along the drawn path.
-  if(Math.hypot((x-327)/34,(y+318)/30)<1)return true;
+  // wall at (306,-313)-(334,-331). This capsule joins both along the drawn path.
+  {const ax=318,ay=-296,bx=327,by=-346,dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));
+   if(Math.hypot(x-ax-t*dx,y-ay-t*dy)<24)return true;} // straight-sided capsule: no concave slivers
   return PATH.some((a,i)=>{
     const b=PATH[i+1]||a,dx=b.x-a.x,dy=b.y-a.y,length=dx*dx+dy*dy;
     const t=length?Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/length)):0;
