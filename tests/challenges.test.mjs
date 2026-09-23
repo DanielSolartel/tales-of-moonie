@@ -13,9 +13,8 @@ test('Laberinto compacto: cuatro cruces, dos desvíos y un bucle reversibles',()
  const w={...world(),bloomed:true,progress:2};
  for(const points of [g.MAZE_ROUTE,...g.MAZE_BRANCHES])for(let i=0;i<points.length-1;i++){const a=points[i],b=points[i+1],n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y));for(let j=0;j<=n;j++){const t=j/n,x=a.x+(b.x-a.x)*t,y=g.MAZE_TOP+a.y+(b.y-a.y)*t;assert.ok(g.walkAllowed(w,x,y),`path ${x},${y}`);}}
  assert.equal(g.walkAllowed(w,10,-700),false);assert.equal(g.walkAllowed({...w,progress:1},342,-345),false);w.y=g.MAZE_TOP;g.tickChallenges(w,.02);assert.equal(w.challenges.mazeDone,true);
- // Salir ya no congela a Moonie ni empuja la cámara (se sentía como un choque): sin cinemática,
- // y el objetivo cambia de inmediato al segundo libro.
- assert.equal(w.challenges.cinema,null);assert.equal(g.busy(w.challenges),false);assert.equal(g.objectiveFor(w).text,'Examina el segundo libro');
+ // Documento Maestro: al salir se reproduce la revelación del segundo libro y cambia el objetivo.
+ assert.equal(w.challenges.cinema.kind,'bookReveal');assert.equal(g.objectiveFor(w).text,'Examina el segundo libro');
 });
 test('La salida del laberinto no atasca a Moonie con controles normales',()=>{
  // Réplica del bucle real de movimiento (igual que el test del arroyo de más abajo):
@@ -46,21 +45,33 @@ for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones física
 test('Piedra equivocada devuelve suavemente a la orilla y conserva la ruta',()=>{
  const w={...world(0),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);g.tryRiverStep(w,1,0);tick(w,.57);assert.equal(w.challenges.river,'returning');const x=w.x,y=w.y;tick(w,1.5);assert.notDeepEqual({x:w.x,y:w.y},{x,y});assert.notEqual(w.y,g.RIVER_SHORE.y);tick(w,7.5);assert.equal(w.challenges.river,'crossing');assert.equal(w.challenges.stone,0);assert.equal(w.challenges.riverRoute,0);assert.equal(w.y,g.RIVER_SHORE.y);
 });
-test('Salida del laberinto continua: sin congelarse, sin retroceso y con regreso libre',()=>{
- // Réplica del bucle real (tickChallenges + movimiento por ejes a 77 u/s, 60 fps). Antes, la
- // primera salida congelaba 210 cuadros en 'bookReveal' mientras la cámara avanzaba y volvía.
+test('Salida del laberinto: revelación anclada, sin retroceso, posición intacta y regreso libre',()=>{
+ // Bucle real (tickChallenges + movimiento por ejes a 77 u/s, 60 fps) desde el centro, ambos
+ // bordes y ambas diagonales. La revelación del segundo libro (Documento Maestro) se reproduce
+ // una vez; la cámara se queda en el encuadre previo durante el fundido, corta a un plano
+ // cercano ANCLADO en el libro y vuelve exactamente al encuadre previo: nunca avanza y retrocede.
  const SP=77/60;
- for(const [x0,dx] of [[312,0],[328,0],[344,0],[320,1],[336,-1]]){
-  const w={x:x0,y:g.MAZE_TOP+30,bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
-  const len=Math.hypot(dx,1);let prev=w.y;
-  for(let i=0;i<180;i++){
-   g.tickChallenges(w,1/60);assert.equal(w.challenges.cinema,null,`x0=${x0}: cinemática en el cuadro ${i}`);
+ for(const [x0,dx] of [[328,0],[312,0],[344,0],[320,1],[336,-1]]){
+  const w={x:x0,y:g.MAZE_TOP+30,direction:'back',bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const len=Math.hypot(dx,1);let prev=w.y,start=null,wide=null,closeY=null,frames=0,sawClose=false;
+  for(let i=0;i<420;i++){
+   g.tickChallenges(w,1/60);const c=w.challenges.cinema,cam=g.cinemaCamera(w);
+   if(c){assert.equal(c.kind,'bookReveal');frames++;
+    if(!start){start={x:w.x,y:w.y};wide=g.gameCamera(w.y);}
+    assert.deepEqual({x:w.x,y:w.y},start,'Moonie no se desplaza durante la revelación');
+    if(cam.close<.5)assert.equal(cam.y,wide,'sin panorámica: el plano abierto no se mueve');
+    else{sawClose=true;if(closeY===null)closeY=cam.y;assert.equal(cam.y,closeY,'el plano cercano está anclado en el libro');}
+    continue;}
+   if(start&&frames)assert.equal(cam.y,g.gameCamera(w.y),'al terminar, la cámara vuelve al encuadre de juego');
    const nx=dx/len*SP,ny=-1/len*SP;if(g.walkAllowed(w,w.x+nx,w.y))w.x+=nx;if(g.walkAllowed(w,w.x,w.y+ny))w.y+=ny;
-   assert.ok(w.y<=prev+1e-9,`x0=${x0}: retrocedió en el cuadro ${i} (${prev.toFixed(2)} -> ${w.y.toFixed(2)})`);prev=w.y;
+   assert.ok(w.y<=prev+1e-9,`x0=${x0}: retrocedió (${prev.toFixed(2)} -> ${w.y.toFixed(2)})`);prev=w.y;
   }
-  assert.ok(w.y<g.MAZE_TOP-40,`x0=${x0}: no salió (y=${w.y.toFixed(1)})`);assert.equal(w.challenges.mazeDone,true);
-  const tx=w.x;w.x=328;for(let i=0;i<150;i++){g.tickChallenges(w,1/60);if(g.walkAllowed(w,w.x,w.y+SP))w.y+=SP;}
-  assert.ok(w.y>g.MAZE_TOP+20,`desde (${tx.toFixed(0)}): no pudo volver a entrar (y=${w.y.toFixed(1)})`);
+  assert.ok(frames>=200&&frames<=215&&sawClose,`x0=${x0}: la revelación debe durar ~3,5 s con plano cercano (${frames})`);
+  assert.equal(g.objectiveFor(w).text,'Examina el segundo libro');
+  assert.ok(w.y<g.MAZE_TOP-40,`x0=${x0}: no salió (y=${w.y.toFixed(1)})`);
+  w.x=328;for(let i=0;i<150;i++){g.tickChallenges(w,1/60);if(g.walkAllowed(w,w.x,w.y+SP))w.y+=SP;}
+  assert.ok(w.y>g.MAZE_TOP+20,`x0=${x0}: no pudo volver a entrar (y=${w.y.toFixed(1)})`);
+  assert.equal(w.challenges.cinema,null,'volver a cruzar no repite la revelación');
  }
 });
 test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
@@ -86,16 +97,18 @@ test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo
   assert.ok(crossings>=10,`solo ${crossings} cruces de la ${mouth}`);
  }
 });
-test('La tercera planta del minijuego queda en el suelo abierto del claro, junto a las otras dos',()=>{
- // Coordenadas de historia: Simón (430,-1250) y tercera flor lunar (342,-1320), de story.ts.
- const P=g.PLANTS.map(p=>({x:p.x,y:g.storyY(p.y)})),e=p=>Math.hypot((p.x-320)/143,(p.y+1254)/107),d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+test('La tercera planta del minijuego queda en el suelo abierto del claro, fuera de los árboles',()=>{
+ // Comprobación geométrica con la máscara medida del dibujo del claro (CLEARING_MASK).
+ const P=g.PLANTS.map(p=>({x:p.x,y:g.storyY(p.y)})),d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
  assert.deepEqual(P.slice(0,2),[{x:174,y:-1207},{x:280,y:-1174}],'las dos primeras no se mueven');
- assert.ok(e(P[2])<=.9,`la tercera sigue bajo las copas (elipse ${e(P[2]).toFixed(2)})`);
- // Posición elegida sobre la tierra medida píxel a píxel en el dibujo del claro (las copas del
- // noroeste quedan fuera). Hueco visual con la flor > ancho de Moonie; Simón conserva >=168.
- assert.ok(d(P[2],{x:430,y:-1250})>=168&&d(P[2],{x:342,y:-1320})>=100,'separada de Simón y de la flor lunar');
- assert.ok(d(P[2],P[0])>=80&&d(P[2],P[1])>=80,'no se superpone con las otras plantas');
- assert.ok(e(P[2])<=.5,'en el interior del claro, no en su borde');
+ const f=g.plantFootprint(P[2]);
+ assert.equal(f.openBase,1,'toda su base pisa el suelo abierto del claro');
+ assert.ok(f.bodyClearOfTrees>=.95,`su cuerpo no se mete en copas ni troncos (${(f.bodyClearOfTrees*100).toFixed(0)}% libre)`);
+ const old=g.plantFootprint({x:184,y:-1317});
+ assert.equal(old.openBase,0,'la máscara detecta que la posición anterior estaba entre los árboles');
+ for(const p of P.slice(0,2))assert.ok(g.plantFootprint(p).openBase>=.75,'las plantas aprobadas también están en el claro');
+ assert.ok(d(P[2],{x:430,y:-1250})>=165&&d(P[2],{x:342,y:-1320})>=100,'separada de Simón y de la flor lunar');
+ assert.ok(d(P[2],P[0])>=75&&d(P[2],P[1])>=75,'no se superpone con las otras plantas');
  const w={bloomed:true,progress:7,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
  let reach=false;for(let a=0;a<360&&!reach;a+=10)for(let r=26;r<=46&&!reach;r+=4){const x=g.PLANTS[2].x+Math.cos(a*Math.PI/180)*r,y=g.PLANTS[2].y+Math.sin(a*Math.PI/180)*r;if(g.walkAllowed(w,x,y))reach=true;}
  assert.ok(reach,'se puede llegar a su zona de interacción');

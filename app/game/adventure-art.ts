@@ -1,4 +1,4 @@
-import { LIGHTS, PLANTS, STONES, MAZE_TOP, MAZE_HEIGHT, MAZE_ROUTE, RIVER_TOP, RIVER_BOTTOM, worldY, objectiveFor, patternSequence, riverSequence, gameCamera, mazeRays, guideGlowActive } from './adventure';
+import { LIGHTS, PLANTS, STONES, MAZE_TOP, MAZE_HEIGHT, MAZE_ROUTE, RIVER_TOP, RIVER_BOTTOM, worldY, objectiveFor, patternSequence, riverSequence, gameCamera, mazeRays, guideGlowActive, cinemaCamera } from './adventure';
 import type { World } from './render';
 import type { Look } from './story';
 import { personalizePose } from './poses';
@@ -65,21 +65,7 @@ export class AdventureArt{
   const lit=s?.kind==='patternDemo'?seq[Math.min(seq.length-1,Math.floor(s.time/s.duration*seq.length))]:q.feedback>0?seq[Math.max(0,q.patternStep-1)]:-1;
   for(const [i,p] of PLANTS.entries()){if(w.y>=p.y||Math.abs(w.x-p.x)>65||p.y-cam<0||p.y-cam>450)continue;const state=q.pattern==='done'||seq.slice(0,q.patternStep).includes(i as never)?2:lit===i?1:0;c.drawImage(this.plants[state][i],p.x-40,p.y-cam-84);}
  }
- camera(w:World){
-  const q=w.challenges!,s=q.cinema,focus=q.riverFocus||0;
-  if(!s)return {y:Math.round(gameCamera(w.y)+(w.y-180-gameCamera(w.y))*focus),x:Math.round(w.x),close:focus};
-  let target={x:w.x,y:w.y-24};
-  if(s.kind==='spirit')target=LIGHTS[s.index];
-  if(s.kind==='ritual')target={x:365,y:195};
-  if(s.kind==='bloom2')target={x:360,y:worldY(-560)};
-  if(s.kind==='bloom3')target={x:342,y:worldY(-1320)};
-  if(s.kind==='bookReveal')target={x:461,y:worldY(-382)};
-  if(s.kind==='riverDemo')target={x:320,y:RIVER_TOP+180};
-  if(s.kind==='patternDemo'||s.kind==='constellation')target={x:295,y:worldY(-1240)};
-  if(s.kind==='riverError')return {y:Math.round(w.y-180),x:Math.round(w.x),close:1};
-  const envelope=clamp(s.time/.6)*clamp((s.duration-s.time)/.6),y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*envelope);
-  return {y,x:target.x,close:['riverDemo','patternDemo','constellation','bookReveal'].includes(s.kind)?0:envelope};
- }
+ camera(w:World){return cinemaCamera(w);}
  draw(c:CanvasRenderingContext2D,w:World,cam:number){const q=w.challenges!,s=q.cinema;c.save();c.translate(0,-cam);
   if(!w.bloomed)LIGHTS.forEach((p,i)=>{const active=s?.kind==='spirit'&&s.index===i,ritual=s?.kind==='ritual',t=s?.time||0,phase=Math.floor(w.time*3+i)%3;
    let x=p.x,y=p.y-22+Math.sin(w.time*1.8+i)*3,a=.7;

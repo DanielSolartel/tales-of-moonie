@@ -16,7 +16,68 @@ export const RIVER_SHORE={x:320,y:RIVER_TOP+312},RIVER_EXIT={x:320,y:RIVER_TOP+6
 // interacción, no el espacio visual. Centros ahora a >=168 de Simón (x430 y-1250), >=158 de la
 // tercera flor (x342 y-1320) y >=110 entre sí; fuera del sendero sur. Dos plantas quedan en el
 // borde oeste del claro: siguen alcanzables porque se activan a 49 unidades.
-export const PLANTS=[{x:174,y:worldY(-1207)},{x:280,y:worldY(-1174)},{x:260,y:worldY(-1256)}]; // 3.ª planta: sobre la tierra medida del claro (antes bajo las copas del noroeste)
+export const PLANTS=[{x:174,y:worldY(-1207)},{x:280,y:worldY(-1174)},{x:264,y:worldY(-1252)}]; // 3.ª planta: suelo abierto del claro (ver CLEARING_MASK)
+// Final clearing, measured from its art in 4px cells (story coordinates): '#' open ground (dirt),
+// ':' open ground (grass rim), 'T' trees (canopy, trunks, dark foliage) or anything not connected
+// to the open clearing. Used to prove a plant stands in the open, not among trees.
+export const CLEARING_MASK={x0:140,y0:-1352,cell:4,rows:[
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::########TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::#####TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::#####TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::######TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::#######TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::#######TTTTTTT::TTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:T:::######TTTTTTT::TTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::#########TT###::TTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::################::::TTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::################::::::TTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::#####################::TTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::###:::#################::::TTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTT:T::#######:###################::::TTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTT:::::#############################:::TTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTT::###########################:####:::TTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTT:::###############################:::TTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTT::::::############################::#:::::TTTTT:#T##TTTT",
+ "TTTTTTTTTTTTTTTTTTT::::::::::::#################################:::TT#######:TTT",
+ "TTTTTTTTTTTTTTTTT::::::::#######################################::::#########TTT",
+ "TTTTTTTTTTTTTTTT:::::##############################################:######T##TTT",
+ "TTTTTTTTTTTTT::::::::#############################################::#########TTT",
+ "TTTTTTTTTTT::::::##:::#############################################:#########::T",
+ "TTTTTTTTT::::::##########:::#########:######################################T:::",
+ "TTTTTTTT::::::#############:################################################::::",
+ "TTTTTT:::::###########################################################::########",
+ "TTTTTT:::############################################################:::::#:###:",
+ "TTTTT:::::######################################################################",
+ "TTTTT::::#######################################################################",
+ "TTTT:::#########################################################################",
+ "T:::::##########################################################################",
+ "TT:::::#########################################################################",
+ "TTTTT:::::#####################################:################################",
+ "TTTTTT::::######################################################################",
+ "TTTTTT::::::####################################################################",
+ "TTTTTT:::::######################::#############################################",
+ "TTTTTT:::::###################::::#:#####################:::####################",
+ "TTTTTT::########::######################################################::::####",
+ "TTTTTTT:::##:::::#########################################################::::##",
+ "TTTTTTTTTT::##::##########################################################::::::",
+ "TTTTTTTTTTT:::###########::::########:###########################:::#######::::T",
+ "TTTTTTTTTTTT:::#############:::##########################:#######:::::###::::T:T",
+ "TTTTTTTTTTTTT:::####::::::::::::#::#####################::::::::::::::::::::TTTT",
+ "TTTTTTTTTTTTTT::::::::T:::::::::::######::##########:::::::TT:T:::TTTT:::::TTTTT",
+ "TTTTTTTTTTTTTTTTTT:TTTTTTTTTTTT::::::::::###########:::::TTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::::#######:::::::TTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::::####:::::::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::##########::TTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::##########::TTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::::######::::::::TTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::::#:#########::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::########:::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::#######:::::TTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::######::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:#########::TTTTTTTTTTTTTTTTTTTTTTTT"]};
+export const clearingCell=(x:number,y:number)=>{const m=CLEARING_MASK,cx=Math.floor((x-m.x0)/m.cell),cy=Math.floor((y-m.y0)/m.cell);return cy<0||cy>=m.rows.length||cx<0||cx>=m.rows[0].length?'T':m.rows[cy][cx];};
+// A plant's footprint in story coordinates: its base (±16, 0..8 above) and its body (±16, 12..56 above).
+export function plantFootprint(p:{x:number,y:number}){let base=0,bn=0,body=0,yn=0;for(let dx=-16;dx<=16;dx+=4){for(let dy=0;dy<=8;dy+=4){bn++;if(clearingCell(p.x+dx,p.y-dy)!=='T')base++;}for(let dy=12;dy<=56;dy+=4){yn++;if(clearingCell(p.x+dx,p.y-dy)!=='T')body++;}}return {openBase:base/bn,bodyClearOfTrees:body/yn};}
 export const PATTERNS=[[1,0,2],[2,0,1,0,2]] as const,PATTERN=PATTERNS[0];
 export type CinemaKind='spirit'|'ritual'|'bloom2'|'bloom3'|'bookReveal'|'riverDemo'|'riverError'|'patternDemo'|'constellation';
 export type Cinema={kind:CinemaKind;time:number;duration:number;index:number;origin:Point;direction:Direction;cue:number};
@@ -122,7 +183,7 @@ export function tickChallenges(w:ChallengeWorld,dt:number){
   if(t===1){if(q.jumpIndex>=20){q.river='done';q.currentStone=q.jumpIndex<29?q.jumpIndex-20:-1;}else if(q.jumpIndex===9){q.river='done';q.currentStone=-1;}else if(q.jumpIndex===riverSequence(q)[q.stone]){q.currentStone=q.jumpIndex;q.stone++;q.river='crossing';sound(q,q.stone);}else{q.currentStone=q.jumpIndex;q.riverAttempts++;q.river='returning';startCinema(w,'riverError',q.jumpIndex,q.riverAttempts===1?3.5:2);}}return;
  }
  if(!w.bloomed&&!q.lights.every(Boolean))q.searchTime+=dt;
- if(inMaze(w.y))q.mazeTime+=dt;else if(w.y<=MAZE_TOP&&w.progress===2&&!q.mazeDone){q.mazeDone=true;} // objective -> "Examina el segundo libro"; no freeze, no camera push (felt like a collision)
+ if(inMaze(w.y))q.mazeTime+=dt;else if(w.y<=MAZE_TOP&&w.progress===2&&!q.mazeDone){q.mazeDone=true;startCinema(w,'bookReveal',0,3.5);} // Documento Maestro: revelación del segundo libro (plano cercano anclado, ver cinemaCamera)
  const objective=objectiveFor(w),d=distance(w,objective.target);
  if(q.lastKey!==objective.text||d<q.bestDistance-8){q.idle=0;q.bestDistance=d;q.lastKey=objective.text;}else q.idle+=dt;
 }
@@ -150,3 +211,26 @@ export function mazeRays(q:Challenges,time:number){
 // Guidance glow at the objective. While the maze is unsolved and has been entered, it depends on
 // maze time on both sides of the entrance; otherwise on idle time. Never on the side of a mouth.
 export const guideGlowActive=(w:ChallengeWorld)=>{const q=w.challenges!;return !w.bloomed?q.searchTime>=50:(w.progress===2&&!q.mazeDone&&q.mazeTime>0)?q.mazeTime>=105:q.idle>=45;};
+
+// Camera for play and cinemas (moved verbatim from AdventureArt.camera so it can be tested).
+export function cinemaCamera(w:ChallengeWorld){
+  const q=w.challenges!,s=q.cinema,focus=q.riverFocus||0,clamp=(v:number)=>Math.max(0,Math.min(1,v));
+  if(!s)return {y:Math.round(gameCamera(w.y)+(w.y-180-gameCamera(w.y))*focus),x:Math.round(w.x),close:focus};
+  let target={x:w.x,y:w.y-24};
+  if(s.kind==='spirit')target=LIGHTS[s.index];
+  if(s.kind==='ritual')target={x:365,y:195};
+  if(s.kind==='bloom2')target={x:360,y:worldY(-560)};
+  if(s.kind==='bloom3')target={x:342,y:worldY(-1320)};
+  if(s.kind==='bookReveal')target={x:461,y:worldY(-382)};
+  if(s.kind==='riverDemo')target={x:320,y:RIVER_TOP+180};
+  if(s.kind==='patternDemo'||s.kind==='constellation')target={x:295,y:worldY(-1240)};
+  if(s.kind==='riverError')return {y:Math.round(w.y-180),x:Math.round(w.x),close:1};
+  const envelope=clamp(s.time/.6)*clamp((s.duration-s.time)/.6);
+  // bookReveal: a close shot ANCHORED on the book. The wide view never pans: it holds the exact
+  // pre-cinema framing through the fade to dark, cuts to the book (2x) for the hold, and fades
+  // back to that same framing. The old version panned 40px toward the book and back while
+  // Moonie stood frozen, which read as bumping into something. Moonie's position is untouched.
+  if(s.kind==='bookReveal')return envelope>=.5?{y:Math.round(target.y-180),x:target.x,close:envelope}:{y:gameCamera(s.origin.y),x:Math.round(s.origin.x),close:envelope};
+  const y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*envelope);
+  return {y,x:target.x,close:['riverDemo','patternDemo','constellation'].includes(s.kind)?0:envelope};
+ }
