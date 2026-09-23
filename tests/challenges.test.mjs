@@ -115,6 +115,30 @@ test('Luciérnagas: vuelo individual, píxeles enteros, plano lejano y congelada
  // Al envolver en los bordes de la banda se desvanecen: nunca aparecen de golpe.
  for(let cam=0;cam<2500;cam+=7)for(const f of at(9,cam)){const edge=f.edge;if(edge<.05)assert.ok(f.opacity<.05,'aparición brusca al envolver');}
 });
+test('Planos cercanos de los momentos (caída, fotos de Simón, cofre, sonrisa): anclados y con retorno exacto',()=>{
+ const S={x:430,y:g.worldY(-1250)},C={x:320,y:g.worldY(-1620)};
+ const mk=(extra)=>({x:342,y:g.worldY(-1106),direction:'back',bloomed:true,progress:7,time:40,secondBloomTime:0,thirdBloomTime:10,simonMet:false,simonTime:-1,scene:'forest',motion:null,motionTime:0,challenges:g.freshChallenges(0),...extra});
+ const play=(w)=>{const q=w.challenges;q.cinema=null;const m=w.motion,st=w.simonTime,ct=w.chestTime,sc=w.scene;w.motion=null;w.simonTime=-1;delete w.chestTime;w.scene='forest';const cam=g.cinemaCamera(w);w.motion=m;w.simonTime=st;if(ct!==undefined)w.chestTime=ct;w.scene=sc;return cam;};
+ const check=(label,w,set,from,to,step=1/60)=>{const pos={x:w.x,y:w.y},free=play(w);let anchor=null,close=false;
+  for(let t=from;t<=to;t+=step){set(t);const cam=g.cinemaCamera(w);
+   if(cam.close<.5)assert.equal(cam.y,free.y,`${label}: deslizamiento en t=${t.toFixed(2)}`);else{close=true;if(anchor===null)anchor=cam.y;assert.equal(cam.y,anchor,`${label}: plano cercano no anclado`);}
+   assert.deepEqual({x:w.x,y:w.y},pos,`${label}: Moonie se movió`);}
+  assert.ok(close,`${label}: sin plano cercano`);return free;};
+ // Caída: plano cercano mientras permanece caída; se abre al levantarse y vuelve exacto.
+ let w=mk({motion:'fallen'});let free=check('caída',w,t=>{w.motion='fallen';w.motionTime=t;},0,2.5);
+ w.motion='rise';w.motionTime=.7;assert.deepEqual(g.cinemaCamera(w),free,'tras levantarse la cámara vuelve exacta');
+ // Simón: los tres flashes (0,30 · 0,95 · 1,60 s) caen dentro del plano cercano.
+ w=mk({x:S.x-40,y:S.y+10,simonMet:true,simonTime:40});free=check('Simón',w,t=>{w.time=40+t;},0,3.2);
+ for(const f of [.30,.95,1.60]){w.time=40+f+.03;assert.ok(g.cinemaCamera(w).close>=1,`flash ${f}s fuera del plano cercano`);}
+ w.time=40+3.2;assert.deepEqual(g.cinemaCamera(w),free);
+ // Cofre: desde la apertura hasta la carta.
+ w=mk({x:C.x,y:C.y+40,progress:8,chestTime:40});check('cofre',w,t=>{w.time=40+t;},0,2);
+ // Cierre: la sonrisa en plano cercano; la ascensión de la estrella (3 s) en plano general.
+ w=mk({x:C.x,y:C.y+40,progress:8,scene:'closing',finalTime:0});check('sonrisa',w,t=>{w.finalTime=t;},0,2.95);
+ for(const t of [3,5.2,8]){w.finalTime=t;assert.ok(g.cinemaCamera(w).close===0,`la ascensión (t=${t}) debe verse en plano general`);}
+ // Sin momento activo la cámara es exactamente la de juego.
+ w=mk({});assert.deepEqual(g.cinemaCamera(w),{y:g.gameCamera(w.y),x:Math.round(w.x),close:0});
+});
 test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
  // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
  // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.

@@ -90,6 +90,8 @@ export class AdventureArt{
   const demo=s?.kind==='riverDemo';if(w.progress>=3&&w.y<RIVER_BOTTOM_SAFE&&w.y>RIVER_TOP-80){
    const cue=demo?Math.min(9,Math.floor(s.time/s.duration*10)):-1,idx=cue>=0?riverSequence(q)[cue%5]:-1;
    for(let i=0;i<24;i++){const x=160+i*71%320,y=RIVER_TOP+110+i*39%142;c.globalAlpha=.12+Math.sin(w.time*2+i)*.08;c.fillStyle='#b7d9ff';c.fillRect(x,Math.round(y),4+i%5,1);}c.globalAlpha=1;
+   // Moon glints on the water, each twinkling on its own rhythm (whole pixels, game time).
+   for(let i=0;i<16;i++){const gx=236+((i*53)%168),gy=RIVER_TOP+122+((i*37)%118)+Math.round(Math.sin(w.time*.7+i)*2),a=Math.max(0,Math.sin(w.time*(1.1+(i%5)*.27)+i*1.9));if(a<.15)continue;c.globalAlpha=.42*a*a;c.fillStyle='#eaf4ff';c.fillRect(gx,gy,i%4===0?2:1,1);}c.globalAlpha=1;
    if(q.river==='done'){
     // Barrera natural discreta: justo al resolverse el cruce la corriente se marca más
     // fuerte en el borde de salida, la misma línea donde walkAllowed ya bloquea el regreso.

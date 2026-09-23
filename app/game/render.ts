@@ -346,10 +346,20 @@ export class MoonieRenderer {
     this.redrawClassroom(c,219,264,193,15);
     this.redrawClassroom(c,245,271,86,89);
   }
-  private parallaxCam=0; // camera of the frame being drawn, for decorative depth planes only
+  private parallaxCam=0;private dreamStage?:HTMLCanvasElement; // camera of the frame being drawn, for decorative depth planes only
   draw(c:CanvasRenderingContext2D,w:World,reduced=false) {
     this.parallaxCam=0;
     if(!this.loaded)return;
+    if(w.scene==='dream'&&!reduced){
+      // Director's cut: Moonie asleep in Humanística III, a 2x close shot of her approved seated
+      // sleeping pose. Fade-cut from the room; the scene's own glow and fade to dark carry on.
+      const e=Math.max(0,Math.min(1,w.dreamTime/.35));
+      if(e>=.5){if(!this.dreamStage){this.dreamStage=document.createElement('canvas');this.dreamStage.width=640;this.dreamStage.height=360;}
+        const sc=this.dreamStage.getContext('2d')!;this.drawBase(sc,w,reduced);c.save();c.imageSmoothingEnabled=false;c.drawImage(this.dreamStage,150,150,320,180,0,0,640,360);c.restore();}
+      else this.drawBase(c,w,reduced);
+      if(e>0&&e<1){c.fillStyle=`rgba(3,7,20,${Math.sin(e*Math.PI)*.95})`;c.fillRect(0,0,640,360);}
+      return;
+    }
     if(!w.challenges||!['forest','letter','closing'].includes(w.scene)){this.drawBase(c,w,reduced);return;}
     const q=w.challenges,view=this.adventure.camera(w),cam=view.y,legacy={...w,y:storyY(w.y)};this.parallaxCam=cam;
     const stage=this.stage||(this.stage=document.createElement('canvas'));stage.width=640;stage.height=360;
@@ -473,7 +483,9 @@ export class MoonieRenderer {
         if(!w.simonMet)c.scale(-1,1);
         c.drawImage(this.simon[posed?1:0],-20,-40);c.restore();
       };
-      this.drawSecondGate(c,secondOpen?gateRetreat(secondAge):0);
+      // Vines stir (a decaying 1px quiver) in the moment before they withdraw.
+      const stir=secondOpen&&secondAge>.05&&secondAge<.6?Math.round(Math.sin(secondAge*42)*1.4*(1-(secondAge-.05)/.55)):0;
+      c.save();c.translate(stir,0);this.drawSecondGate(c,secondOpen?gateRetreat(secondAge):0);c.restore();
       const objects=[{y:LANDMARKS.chest.y,draw:()=>{
         const {x,y}=LANDMARKS.chest,age=w.chestTime===undefined?-1:w.time-w.chestTime;
         const pose=age<0?0:age<.75?1:2;
