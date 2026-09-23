@@ -12,7 +12,72 @@ export const LIGHTS=[{x:140,y:530},{x:302,y:650},{x:478,y:555}],HIDE_LABELS=['la
 export const STONES=[{x:252,y:231},{x:321,y:207},{x:394,y:232},{x:253,y:178},{x:394,y:178},{x:254,y:127},{x:321,y:153},{x:393,y:127},{x:321,y:98}].map(p=>({...p,y:p.y+RIVER_TOP}));
 export const RIVER_ROUTES=[[0,3,6,5,8],[2,4,6,7,8],[1,3,6,7,8]] as const;
 export const RIVER_SHORE={x:320,y:RIVER_TOP+312},RIVER_EXIT={x:320,y:RIVER_TOP+62};
-export const PLANTS=[{x:267,y:worldY(-1220)},{x:373,y:worldY(-1220)},{x:320,y:worldY(-1280)}];
+// Tercera recomposición (revisión en navegador): las distancias previas medían radios de
+// interacción, no el espacio visual. Centros ahora a >=168 de Simón (x430 y-1250), >=158 de la
+// tercera flor (x342 y-1320) y >=110 entre sí; fuera del sendero sur. Dos plantas quedan en el
+// borde oeste del claro: siguen alcanzables porque se activan a 49 unidades.
+export const PLANTS=[{x:174,y:worldY(-1207)},{x:280,y:worldY(-1174)},{x:264,y:worldY(-1252)}]; // 3.ª planta: suelo abierto del claro (ver CLEARING_MASK)
+// Final clearing, measured from its art in 4px cells (story coordinates): '#' open ground (dirt),
+// ':' open ground (grass rim), 'T' trees (canopy, trunks, dark foliage) or anything not connected
+// to the open clearing. Used to prove a plant stands in the open, not among trees.
+export const CLEARING_MASK={x0:140,y0:-1352,cell:4,rows:[
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::########TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::#####TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::#####TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::######TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::#######TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::#######TTTTTTT::TTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:T:::######TTTTTTT::TTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::#########TT###::TTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::################::::TTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::################::::::TTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::#####################::TTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::###:::#################::::TTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTT:T::#######:###################::::TTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTT:::::#############################:::TTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTT::###########################:####:::TTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTT:::###############################:::TTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTT::::::############################::#:::::TTTTT:#T##TTTT",
+ "TTTTTTTTTTTTTTTTTTT::::::::::::#################################:::TT#######:TTT",
+ "TTTTTTTTTTTTTTTTT::::::::#######################################::::#########TTT",
+ "TTTTTTTTTTTTTTTT:::::##############################################:######T##TTT",
+ "TTTTTTTTTTTTT::::::::#############################################::#########TTT",
+ "TTTTTTTTTTT::::::##:::#############################################:#########::T",
+ "TTTTTTTTT::::::##########:::#########:######################################T:::",
+ "TTTTTTTT::::::#############:################################################::::",
+ "TTTTTT:::::###########################################################::########",
+ "TTTTTT:::############################################################:::::#:###:",
+ "TTTTT:::::######################################################################",
+ "TTTTT::::#######################################################################",
+ "TTTT:::#########################################################################",
+ "T:::::##########################################################################",
+ "TT:::::#########################################################################",
+ "TTTTT:::::#####################################:################################",
+ "TTTTTT::::######################################################################",
+ "TTTTTT::::::####################################################################",
+ "TTTTTT:::::######################::#############################################",
+ "TTTTTT:::::###################::::#:#####################:::####################",
+ "TTTTTT::########::######################################################::::####",
+ "TTTTTTT:::##:::::#########################################################::::##",
+ "TTTTTTTTTT::##::##########################################################::::::",
+ "TTTTTTTTTTT:::###########::::########:###########################:::#######::::T",
+ "TTTTTTTTTTTT:::#############:::##########################:#######:::::###::::T:T",
+ "TTTTTTTTTTTTT:::####::::::::::::#::#####################::::::::::::::::::::TTTT",
+ "TTTTTTTTTTTTTT::::::::T:::::::::::######::##########:::::::TT:T:::TTTT:::::TTTTT",
+ "TTTTTTTTTTTTTTTTTT:TTTTTTTTTTTT::::::::::###########:::::TTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::::#######:::::::TTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::::####:::::::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::::##########::TTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::##########::TTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::::######::::::::TTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::::#:#########::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::########:::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::::#######:::::TTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:::######::TTTTTTTTTTTTTTTTTTTTTTTTTT",
+ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT:#########::TTTTTTTTTTTTTTTTTTTTTTTT"]};
+export const clearingCell=(x:number,y:number)=>{const m=CLEARING_MASK,cx=Math.floor((x-m.x0)/m.cell),cy=Math.floor((y-m.y0)/m.cell);return cy<0||cy>=m.rows.length||cx<0||cx>=m.rows[0].length?'T':m.rows[cy][cx];};
+// A plant's footprint in story coordinates: its base (±16, 0..8 above) and its body (±16, 12..56 above).
+export function plantFootprint(p:{x:number,y:number}){let base=0,bn=0,body=0,yn=0;for(let dx=-16;dx<=16;dx+=4){for(let dy=0;dy<=8;dy+=4){bn++;if(clearingCell(p.x+dx,p.y-dy)!=='T')base++;}for(let dy=12;dy<=56;dy+=4){yn++;if(clearingCell(p.x+dx,p.y-dy)!=='T')body++;}}return {openBase:base/bn,bodyClearOfTrees:body/yn};}
 export const PATTERNS=[[1,0,2],[2,0,1,0,2]] as const,PATTERN=PATTERNS[0];
 export type CinemaKind='spirit'|'ritual'|'bloom2'|'bloom3'|'bookReveal'|'riverDemo'|'riverError'|'patternDemo'|'constellation';
 export type Cinema={kind:CinemaKind;time:number;duration:number;index:number;origin:Point;direction:Direction;cue:number};
@@ -51,10 +116,25 @@ export function onMazeTrail(x:number,y:number){return [MAZE_ROUTE,...MAZE_BRANCH
 export function walkAllowed(w:ChallengeWorld,x:number,y:number){
  const q=w.challenges!;if(busy(q))return false;
  if(y>=352){if(y<440)return x>288&&x<351;return Math.hypot((x-320)/244,(y-558)/155)<1&&!LIGHTS.some((p,i)=>i!==2&&Math.hypot((x-p.x)/28,(y-p.y+8)/18)<1)&&!(x>493&&y>460&&y<590);}
- if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-5)return w.bloomed&&w.progress>=2&&[x-7,x+7].every(xx=>onMazeTrail(xx,y-MAZE_TOP));
+ // Maze band. The rows right at each seam accept either collision model (maze corridor
+ // or legacy trail), so the two meshes overlap instead of leaving 1-4px notches.
+ const open=w.bloomed&&w.progress>=2; // the story gate into the maze is unchanged
+ const mazeAt=(ly:number)=>[x-7,x+7].every(xx=>onMazeTrail(xx,ly));
+ const legacyAt=(wy:number)=>canWalk(x,storyY(wy),w.bloomed,w.progress,w.time-w.secondBloomTime,w.time-w.thirdBloomTime);
+ // Seam windows at both maze mouths. Where the maze-corridor model meets the legacy-trail
+ // model their edges disagreed by a few pixels, leaving 1-5px slivers that pinned a player
+ // hugging an edge (verified in Chromium). Across each window a column is walkable only if
+ // it is walkable on BOTH sides, so every column is either open straight through or closed.
+ if(open&&y>MAZE_TOP-11&&y<MAZE_TOP+6)return mazeAt(6)&&legacyAt(MAZE_TOP-11);
+ if(open&&y>MAZE_BOTTOM-6&&y<MAZE_BOTTOM+11)return mazeAt(MAZE_BOTTOM-MAZE_TOP-6)&&legacyAt(MAZE_BOTTOM+11);
+ if(y<MAZE_BOTTOM+5&&y>MAZE_TOP-5)return open&&mazeAt(y-MAZE_TOP);
  if(y<=RIVER_BOTTOM&&y>=RIVER_TOP){
   if(w.progress<3)return false;
-  if(q.river==='done')return STONES.some(p=>distance({x,y},p)<16)||(y>RIVER_TOP+290&&x>285&&x<356)||(y<RIVER_TOP+78&&x>290&&x<350);
+  // Once solved, the stones and the shore-side channel close behind Moonie; only the
+  // narrow exit lip toward the forest stays walkable, so a return attempt stops there.
+  // Stop on the bank itself: 34px north of the first stone's centre (y-1402), so her
+  // feet never overlap its top edge. RIVER_EXIT (y-1438) stays inside for the landing.
+  if(q.river==='done')return y<RIVER_TOP+64&&x>290&&x<350;
   if(y>RIVER_TOP+287)return x>285&&x<356;
   return false;
  }
@@ -66,15 +146,9 @@ export function walkAllowed(w:ChallengeWorld,x:number,y:number){
 // Explicit directional jumps make all nine rocks selectable, including wrong ones.
 export function tryRiverStep(w:ChallengeWorld,dx:number,dy:number):boolean{
  const q=w.challenges!;if(busy(q))return false;
- // A solved crossing remains traversable in either direction, with real jumps.
- if(q.river==='done'){
-  const endpoints=[...STONES,RIVER_EXIT,RIVER_SHORE];
-  const current=endpoints.findIndex(p=>distance(w,p)<24);if(current<0)return false;
-  const source=endpoints[current],len=Math.hypot(dx,dy);if(!len)return false;
-  const options=endpoints.map((p,i)=>({p,i,d:distance(source,p),dot:((p.x-source.x)*dx+(p.y-source.y)*dy)/len/(distance(source,p)||1)})).filter(v=>v.i!==current&&v.d<118&&v.dot>.65).sort((a,b)=>(1-a.dot)*90+a.d-((1-b.dot)*90+b.d));
-  if(!options.length)return current<9;
-  const chosen=options[0];q.river='jumping';q.returnFrom={x:w.x,y:w.y};q.jumpTo={...chosen.p};q.jumpIndex=chosen.i+20;q.riverTime=0;w.direction=dx?(dx>0?'right':'left'):(dy>0?'front':'back');return true;
- }
+ // A solved crossing never offers a jump back onto the stones or the shore: the stone-hop
+ // mechanic only exists to cross once. Onward movement past the exit uses plain walking.
+ if(q.river==='done')return false;
  if(q.river!=='crossing')return false;
  if(q.currentStone<0&&distance(w,RIVER_SHORE)>39)return false;
  const source=q.currentStone<0?RIVER_SHORE:STONES[q.currentStone];
@@ -109,7 +183,7 @@ export function tickChallenges(w:ChallengeWorld,dt:number){
   if(t===1){if(q.jumpIndex>=20){q.river='done';q.currentStone=q.jumpIndex<29?q.jumpIndex-20:-1;}else if(q.jumpIndex===9){q.river='done';q.currentStone=-1;}else if(q.jumpIndex===riverSequence(q)[q.stone]){q.currentStone=q.jumpIndex;q.stone++;q.river='crossing';sound(q,q.stone);}else{q.currentStone=q.jumpIndex;q.riverAttempts++;q.river='returning';startCinema(w,'riverError',q.jumpIndex,q.riverAttempts===1?3.5:2);}}return;
  }
  if(!w.bloomed&&!q.lights.every(Boolean))q.searchTime+=dt;
- if(inMaze(w.y))q.mazeTime+=dt;else if(w.y<=MAZE_TOP&&w.progress===2&&!q.mazeDone){q.mazeDone=true;startCinema(w,'bookReveal',0,3.5);}
+ if(inMaze(w.y))q.mazeTime+=dt;else if(w.y<=MAZE_TOP&&w.progress===2&&!q.mazeDone){q.mazeDone=true;startCinema(w,'bookReveal',0,3.5);} // Documento Maestro: revelación del segundo libro (plano cercano anclado, ver cinemaCamera)
  const objective=objectiveFor(w),d=distance(w,objective.target);
  if(q.lastKey!==objective.text||d<q.bestDistance-8){q.idle=0;q.bestDistance=d;q.lastKey=objective.text;}else q.idle+=dt;
 }
@@ -125,3 +199,38 @@ export function objectiveFor(w:ChallengeWorld):{text:string;detail?:string;targe
  if(w.progress===7){if(q.pattern==='done')return at('Despierta la tercera flor',landmark('flower3'));return at(q.pattern==='showing'?'Observa la constelación':`Repite el patrón · Ronda ${q.round+1}/2`,PLANTS[q.pattern==='input'?patternSequence(q)[q.patternStep]:1],q.pattern==='waiting'?'E junto a una planta para comenzar':q.pattern==='showing'?'Espera a que termine la estrella':`Camina y pulsa E · ${q.patternStep}/${patternSequence(q).length}`);}
  return at(storyY(w.y)>-1460?'Entra al claro final':distance(w,landmark('chest'))<59?'Abre el cofre':'Acércate al cofre',landmark('chest'));
 }
+
+// Moon rays over the correct maze route (Documento Maestro: "rayos de luna que atraviesan las
+// copas", intensified at 45 s). They are scenery: nothing here depends on which side of a maze
+// mouth Moonie stands on (drawing them only while inside toggled a light at every crossing).
+// Point 7 sits on the exit mouth and its beam straddled the boundary, so it casts none.
+export function mazeRays(q:Challenges,time:number){
+ const level=Math.max(0,Math.min(1,(q.mazeTime-45)/2)),dots=q.mazeTime>=75;
+ return MAZE_ROUTE.slice(1,7).map((p,k)=>({x:p.x,y:p.y+MAZE_TOP,next:MAZE_ROUTE[k+2],alpha:.035+(.065+Math.sin(time+k+1)*.025)*level,dots}));
+}
+// Guidance glow at the objective. While the maze is unsolved and has been entered, it depends on
+// maze time on both sides of the entrance; otherwise on idle time. Never on the side of a mouth.
+export const guideGlowActive=(w:ChallengeWorld)=>{const q=w.challenges!;return !w.bloomed?q.searchTime>=50:(w.progress===2&&!q.mazeDone&&q.mazeTime>0)?q.mazeTime>=105:q.idle>=45;};
+
+// Camera for play and cinemas (moved verbatim from AdventureArt.camera so it can be tested).
+export function cinemaCamera(w:ChallengeWorld){
+  const q=w.challenges!,s=q.cinema,focus=q.riverFocus||0,clamp=(v:number)=>Math.max(0,Math.min(1,v));
+  if(!s)return {y:Math.round(gameCamera(w.y)+(w.y-180-gameCamera(w.y))*focus),x:Math.round(w.x),close:focus};
+  let target={x:w.x,y:w.y-24};
+  if(s.kind==='spirit')target=LIGHTS[s.index];
+  if(s.kind==='ritual')target={x:365,y:195};
+  if(s.kind==='bloom2')target={x:360,y:worldY(-560)};
+  if(s.kind==='bloom3')target={x:342,y:worldY(-1320)};
+  if(s.kind==='bookReveal')target={x:461,y:worldY(-382)};
+  if(s.kind==='riverDemo')target={x:320,y:RIVER_TOP+180};
+  if(s.kind==='patternDemo'||s.kind==='constellation')target={x:295,y:worldY(-1240)};
+  if(s.kind==='riverError')return {y:Math.round(w.y-180),x:Math.round(w.x),close:1};
+  const envelope=clamp(s.time/.6)*clamp((s.duration-s.time)/.6);
+  // bookReveal: a close shot ANCHORED on the book. The wide view never pans: it holds the exact
+  // pre-cinema framing through the fade to dark, cuts to the book (2x) for the hold, and fades
+  // back to that same framing. The old version panned 40px toward the book and back while
+  // Moonie stood frozen, which read as bumping into something. Moonie's position is untouched.
+  if(s.kind==='bookReveal')return envelope>=.5?{y:Math.round(target.y-180),x:target.x,close:envelope}:{y:gameCamera(s.origin.y),x:Math.round(s.origin.x),close:envelope};
+  const y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*envelope);
+  return {y,x:target.x,close:['riverDemo','patternDemo','constellation'].includes(s.kind)?0:envelope};
+ }

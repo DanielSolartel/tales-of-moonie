@@ -12,7 +12,30 @@ test('Los espíritus se liberan al terminar su cinemática, sin duplicados',()=>
 test('Laberinto compacto: cuatro cruces, dos desvíos y un bucle reversibles',()=>{
  const w={...world(),bloomed:true,progress:2};
  for(const points of [g.MAZE_ROUTE,...g.MAZE_BRANCHES])for(let i=0;i<points.length-1;i++){const a=points[i],b=points[i+1],n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y));for(let j=0;j<=n;j++){const t=j/n,x=a.x+(b.x-a.x)*t,y=g.MAZE_TOP+a.y+(b.y-a.y)*t;assert.ok(g.walkAllowed(w,x,y),`path ${x},${y}`);}}
- assert.equal(g.walkAllowed(w,10,-700),false);assert.equal(g.walkAllowed({...w,progress:1},342,-345),false);w.y=g.MAZE_TOP;g.tickChallenges(w,.02);assert.equal(w.challenges.mazeDone,true);assert.equal(w.challenges.cinema.kind,'bookReveal');
+ assert.equal(g.walkAllowed(w,10,-700),false);assert.equal(g.walkAllowed({...w,progress:1},342,-345),false);w.y=g.MAZE_TOP;g.tickChallenges(w,.02);assert.equal(w.challenges.mazeDone,true);
+ // Documento Maestro: al salir se reproduce la revelación del segundo libro y cambia el objetivo.
+ assert.equal(w.challenges.cinema.kind,'bookReveal');assert.equal(g.objectiveFor(w).text,'Examina el segundo libro');
+});
+test('La salida del laberinto no atasca a Moonie con controles normales',()=>{
+ // Réplica del bucle real de movimiento (igual que el test del arroyo de más abajo):
+ // sostener "arriba" desde justo antes de la salida no debe dejarla clavada en el punto
+ // exacto donde estaba el bug (apenas 5px pasada la salida, antes del parche).
+ const VIEW_SPEED=77;
+ const frame=(w,dx,dy,dt)=>{
+  const len=Math.hypot(dx,dy)||1,ndx=dx/len*VIEW_SPEED*dt,ndy=dy/len*VIEW_SPEED*dt;
+  const bx=w.x,by=w.y;
+  if(g.walkAllowed(w,w.x+ndx,w.y))w.x+=ndx;
+  if(g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;
+  return Math.abs(w.x-bx)+Math.abs(w.y-by)>1e-6;
+ };
+ const w={x:g.MAZE_ROUTE[7].x,y:g.MAZE_TOP+g.MAZE_ROUTE[7].y-4,bloomed:true,progress:2,challenges:g.freshChallenges(0)};
+ for(let i=0;i<120;i++)frame(w,0,-1,1/60); // 2s reales sosteniendo "arriba" (norte)
+ // Antes del parche quedaba clavada en y=MAZE_TOP-5 (apenas salir) los 2s completos.
+ assert.ok(w.y<g.MAZE_TOP-70,`solo avanzó hasta y=${w.y}, antes se atascaba en MAZE_TOP-5`);
+ // Sostener "arriba" el resto del camino la detiene, con razón, justo en la reja del río
+ // (progreso<3 todavía): eso es la historia, no el bug — no debe ir más allá.
+ for(let i=0;i<300;i++)frame(w,0,-1,1/60); // 5s más
+ assert.ok(w.y>g.RIVER_TOP,'no debe entrar al arroyo antes de leer el segundo libro');
 });
 for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones físicas y cinco saltos`,()=>{
  const w={...world(route),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);assert.equal(w.challenges.river,'crossing');
@@ -22,11 +45,152 @@ for(let route=0;route<3;route++)test(`Arroyo ruta ${route+1}: decisiones física
 test('Piedra equivocada devuelve suavemente a la orilla y conserva la ruta',()=>{
  const w={...world(0),bloomed:true,progress:3,...g.RIVER_SHORE};g.activateChallenge(w,g.nearAction(w));tick(w,9.1);g.tryRiverStep(w,1,0);tick(w,.57);assert.equal(w.challenges.river,'returning');const x=w.x,y=w.y;tick(w,1.5);assert.notDeepEqual({x:w.x,y:w.y},{x,y});assert.notEqual(w.y,g.RIVER_SHORE.y);tick(w,7.5);assert.equal(w.challenges.river,'crossing');assert.equal(w.challenges.stone,0);assert.equal(w.challenges.riverRoute,0);assert.equal(w.y,g.RIVER_SHORE.y);
 });
-test('El arroyo resuelto se puede recorrer de vuelta sin caminar sobre el agua',()=>{
- const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};const q=w.challenges;q.river='done';q.stone=5;
- for(const [dx,dy] of [[0,1],[0,1],[0,1],[0,1]]){assert.ok(g.tryRiverStep(w,dx,dy));tick(w,.57);assert.equal(q.river,'done');}
- assert.equal(w.y,g.RIVER_SHORE.y);assert.equal(q.stone,5);assert.equal(w.progress,4);
+test('Salida del laberinto: revelación anclada, sin retroceso, posición intacta y regreso libre',()=>{
+ // Bucle real (tickChallenges + movimiento por ejes a 77 u/s, 60 fps) desde el centro, ambos
+ // bordes y ambas diagonales. La revelación del segundo libro (Documento Maestro) se reproduce
+ // una vez; la cámara se queda en el encuadre previo durante el fundido, corta a un plano
+ // cercano ANCLADO en el libro y vuelve exactamente al encuadre previo: nunca avanza y retrocede.
+ const SP=77/60;
+ for(const [x0,dx] of [[328,0],[312,0],[344,0],[320,1],[336,-1]]){
+  const w={x:x0,y:g.MAZE_TOP+30,direction:'back',bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const len=Math.hypot(dx,1);let prev=w.y,start=null,wide=null,closeY=null,frames=0,sawClose=false;
+  for(let i=0;i<420;i++){
+   g.tickChallenges(w,1/60);const c=w.challenges.cinema,cam=g.cinemaCamera(w);
+   if(c){assert.equal(c.kind,'bookReveal');frames++;
+    if(!start){start={x:w.x,y:w.y};wide=g.gameCamera(w.y);}
+    assert.deepEqual({x:w.x,y:w.y},start,'Moonie no se desplaza durante la revelación');
+    if(cam.close<.5)assert.equal(cam.y,wide,'sin panorámica: el plano abierto no se mueve');
+    else{sawClose=true;if(closeY===null)closeY=cam.y;assert.equal(cam.y,closeY,'el plano cercano está anclado en el libro');}
+    continue;}
+   if(start&&frames)assert.equal(cam.y,g.gameCamera(w.y),'al terminar, la cámara vuelve al encuadre de juego');
+   const nx=dx/len*SP,ny=-1/len*SP;if(g.walkAllowed(w,w.x+nx,w.y))w.x+=nx;if(g.walkAllowed(w,w.x,w.y+ny))w.y+=ny;
+   assert.ok(w.y<=prev+1e-9,`x0=${x0}: retrocedió (${prev.toFixed(2)} -> ${w.y.toFixed(2)})`);prev=w.y;
+  }
+  assert.ok(frames>=200&&frames<=215&&sawClose,`x0=${x0}: la revelación debe durar ~3,5 s con plano cercano (${frames})`);
+  assert.equal(g.objectiveFor(w).text,'Examina el segundo libro');
+  assert.ok(w.y<g.MAZE_TOP-40,`x0=${x0}: no salió (y=${w.y.toFixed(1)})`);
+  w.x=328;for(let i=0;i<150;i++){g.tickChallenges(w,1/60);if(g.walkAllowed(w,w.x,w.y+SP))w.y+=SP;}
+  assert.ok(w.y>g.MAZE_TOP+20,`x0=${x0}: no pudo volver a entrar (y=${w.y.toFixed(1)})`);
+  assert.equal(w.challenges.cinema,null,'volver a cruzar no repite la revelación');
+ }
+});
+test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
+ // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
+ // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.
+ const SP=77/60;
+ // Un laberinto sin resolver solo se cruza de ida y vuelta por la ENTRADA (salir lo resuelve una
+ // única vez); resuelto, se cruza por la SALIDA. Ambos casos, con y sin ayuda de 45/105 s.
+ for(const [mazeTime,mazeDone,mouth] of [[0,true,'salida'],[60,true,'salida'],[120,true,'salida'],[0,false,'entrada'],[60,false,'entrada'],[120,false,'entrada']]){
+  const edge=mouth==='salida'?g.MAZE_TOP:g.MAZE_BOTTOM,sideIn=y=>mouth==='salida'?y>edge:y<edge;
+  const w={x:328,y:mouth==='salida'?edge+40:edge-40,bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const q=w.challenges;q.mazeTime=mazeTime;q.mazeDone=mazeDone;g.tickChallenges(w,1/60);
+  let t=20,before=g.mazeRays(q,t),glow=g.guideGlowActive(w),crossings=0,wasIn=sideIn(w.y);
+  for(let n=0;n<6;n++)for(const dir of (mouth==='salida'?[-1,1]:[1,-1]))for(let i=0;i<80;i++){
+   t+=1/60;w.time=t;g.tickChallenges(w,1/60);if(g.walkAllowed(w,w.x,w.y+dir*SP))w.y+=dir*SP;
+   if(sideIn(w.y)!==wasIn){crossings++;wasIn=sideIn(w.y);}
+   const rays=g.mazeRays(q,t);assert.equal(rays.length,6);
+   for(const [k,r] of rays.entries()){assert.ok(r.y>g.MAZE_TOP+40,'ningún rayo sobre la boca de salida');assert.ok(Math.abs(r.alpha-before[k].alpha)<.004,`salto de luz (${mouth}, ${mazeTime}s)`);}
+   assert.equal(g.guideGlowActive(w),glow,`el resplandor de guía cambió al cruzar la ${mouth} (${mazeTime}s)`);
+   before=rays;
+  }
+  assert.equal(q.mazeDone,mazeDone,'cruzar no cambia el estado del laberinto');
+  assert.ok(crossings>=10,`solo ${crossings} cruces de la ${mouth}`);
+ }
+});
+test('La tercera planta del minijuego queda en el suelo abierto del claro, fuera de los árboles',()=>{
+ // Comprobación geométrica con la máscara medida del dibujo del claro (CLEARING_MASK).
+ const P=g.PLANTS.map(p=>({x:p.x,y:g.storyY(p.y)})),d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+ assert.deepEqual(P.slice(0,2),[{x:174,y:-1207},{x:280,y:-1174}],'las dos primeras no se mueven');
+ const f=g.plantFootprint(P[2]);
+ assert.equal(f.openBase,1,'toda su base pisa el suelo abierto del claro');
+ assert.ok(f.bodyClearOfTrees>=.95,`su cuerpo no se mete en copas ni troncos (${(f.bodyClearOfTrees*100).toFixed(0)}% libre)`);
+ const old=g.plantFootprint({x:184,y:-1317});
+ assert.equal(old.openBase,0,'la máscara detecta que la posición anterior estaba entre los árboles');
+ for(const p of P.slice(0,2))assert.ok(g.plantFootprint(p).openBase>=.75,'las plantas aprobadas también están en el claro');
+ assert.ok(d(P[2],{x:430,y:-1250})>=165&&d(P[2],{x:342,y:-1320})>=100,'separada de Simón y de la flor lunar');
+ assert.ok(d(P[2],P[0])>=75&&d(P[2],P[1])>=75,'no se superpone con las otras plantas');
+ const w={bloomed:true,progress:7,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+ let reach=false;for(let a=0;a<360&&!reach;a+=10)for(let r=26;r<=46&&!reach;r+=4){const x=g.PLANTS[2].x+Math.cos(a*Math.PI/180)*r,y=g.PLANTS[2].y+Math.sin(a*Math.PI/180)*r;if(g.walkAllowed(w,x,y))reach=true;}
+ assert.ok(reach,'se puede llegar a su zona de interacción');
+});
+test('La entrada del laberinto no choca con controles normales en ninguna columna del camino',()=>{
+ // Reproduce el fallo observado en Chromium: subiendo por x=312/320/327 Moonie se detenía en
+ // y≈-316/-321/-326 contra una pared diagonal entre el sendero anterior y el pasillo.
+ const VIEW_SPEED=77;
+ const frame=(w,dy,dt)=>{const ndy=dy*VIEW_SPEED*dt;if(g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;};
+ for(const x of [312,320,327,340]){
+  const w={x,y:-285,bloomed:true,progress:2,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  for(let i=0;i<150;i++)frame(w,-1,1/60); // 2.5s reales hacia arriba
+  assert.ok(w.y<-345,`x=${x}: se detuvo en y=${w.y.toFixed(1)} antes de entrar`);
+  for(let i=0;i<150;i++)frame(w,1,1/60); // y de vuelta al sendero
+  assert.ok(w.y>-300,`x=${x}: no pudo volver a salir (y=${w.y.toFixed(1)})`);
+ }
+});
+test('Orilla opuesta: Moonie se detiene sobre la tierra, sin pisar el borde de la primera piedra',()=>{
+ // Estado exacto observado en el navegador tras cruzar con flechas: river 'done', stone 5,
+ // en RIVER_EXIT. Antes se detenía en y=-1422, a 20 unidades del centro de la piedra superior
+ // (y=-1402): los pies quedaban sobre su borde. Se exige un margen visual de 30 unidades.
+ const VIEW_SPEED=77,top=g.STONES.reduce((a,p)=>p.y<a.y?p:a);
+ for(const x of [294,320,346]){
+  const w={...world(),bloomed:true,progress:3,x,y:g.RIVER_EXIT.y};const q=w.challenges;q.river='done';q.stone=5;q.currentStone=-1;
+  for(let i=0;i<300;i++){const ndy=VIEW_SPEED/60;if(!g.tryRiverStep(w,0,1)&&g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;}
+  assert.ok(top.y-w.y>=30,`x=${x}: quedó a ${(top.y-w.y).toFixed(1)} del centro de la primera piedra`);
+  assert.equal(q.river,'done');assert.equal(q.stone,5);assert.equal(w.progress,3);
+ }
+});
+test('Tras completar el arroyo, el regreso por las piedras queda bloqueado de inmediato',()=>{
+ const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};const q=w.challenges;q.river='done';q.stone=5;q.currentStone=-1;
+ // En el instante en que el cruce se completa ya no se ofrece ningún salto de regreso.
+ for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]])assert.equal(g.tryRiverStep(w,dx,dy),false);
+ assert.equal(q.river,'done');assert.equal(q.stone,5);assert.equal(w.progress,4);
+ // Caminar hacia atrás se detiene de forma natural justo en el borde de salida: sin caída,
+ // sin teletransporte y sin reiniciar el reto ni perder el progreso.
+ const start={x:w.x,y:w.y};let moved=0;
+ for(let i=0;i<60;i++)if(g.walkAllowed(w,w.x,w.y+1)){w.y+=1;moved++;}
+ assert.ok(moved<20,`avanzó ${moved}px hacia el arroyo`);assert.ok(w.y<g.RIVER_TOP+78,'no debe entrar de nuevo a la zona de piedras');
+ assert.equal(q.river,'done');assert.equal(q.stone,5);assert.equal(w.progress,4);assert.notEqual(w.x,undefined);
+ // Ni las piedras ni el canal de la orilla original vuelven a ser transitables.
+ assert.equal(g.walkAllowed(w,g.STONES[8].x,g.STONES[8].y),false);
  assert.equal(g.walkAllowed(w,290,g.RIVER_TOP+250),false);
+ // Seguir de largo hacia el bosque, en cambio, funciona con normalidad.
+ assert.ok(g.walkAllowed(w,320,g.RIVER_TOP+40));
+ // Una partida nueva no conserva el bloqueo: freshChallenges vuelve a 'waiting'.
+ assert.equal(g.freshChallenges().river,'waiting');
+});
+test('Entradas reales de teclado (cuadro a cuadro, como en el juego) no logran regresar por las piedras',()=>{
+ // Reproduce exactamente la integración de movimiento de MoonieGame.tsx: normaliza dx/dy,
+ // multiplica por VIEW.speed*dt, intenta tryRiverStep y solo si falla aplica walkAllowed
+ // por eje. No es una aserción de estado: es la simulación del bucle real, tecla por tecla.
+ const VIEW_SPEED=77,busy=(q)=>!!q.cinema||q.river==='jumping';
+ const frame=(w,dx,dy,dt)=>{
+  const jumped=(dx||dy)&&!busy(w.challenges)&&g.tryRiverStep(w,dx,dy);
+  if(jumped)return true;
+  if((dx||dy)&&!busy(w.challenges)&&w.challenges.river!=='returning'){
+   const len=Math.hypot(dx,dy),ndx=dx/len*VIEW_SPEED*dt,ndy=dy/len*VIEW_SPEED*dt;
+   const bx=w.x,by=w.y;
+   if(g.walkAllowed(w,w.x+ndx,w.y))w.x+=ndx;
+   if(g.walkAllowed(w,w.x,w.y+ndy))w.y+=ndy;
+   return Math.abs(w.x-bx)+Math.abs(w.y-by)>1e-6;
+  }
+  return false;
+ };
+ // Caso 1: mantener "abajo" presionada 5 segundos reales a 60fps desde la salida exacta.
+ {const w={...world(),bloomed:true,progress:4,...g.RIVER_EXIT};w.challenges.river='done';w.challenges.stone=5;w.challenges.currentStone=-1;
+  for(let i=0;i<300;i++)frame(w,0,1,1/60);
+  assert.ok(w.y<g.RIVER_TOP+78,`quedó en ${w.y}, debía detenerse antes de las piedras`);
+  assert.ok(!g.STONES.some(p=>Math.hypot(p.x-w.x,p.y-w.y)<20),'no debe terminar sobre ninguna piedra');
+  assert.ok(Math.hypot(g.RIVER_SHORE.x-w.x,g.RIVER_SHORE.y-w.y)>20,'no debe terminar en la orilla original');}
+ // Caso 2: alternar abajo/izquierda/derecha 8 segundos (una jugadora insistiendo), desde un x desplazado.
+ {const w={...world(),bloomed:true,progress:4,x:g.RIVER_EXIT.x-12,y:g.RIVER_EXIT.y};w.challenges.river='done';w.challenges.stone=5;w.challenges.currentStone=-1;
+  const dirs=[[0,1],[1,1],[-1,1],[0,1]];
+  for(let i=0;i<480;i++){const [dx,dy]=dirs[Math.floor(i/60)%dirs.length];frame(w,dx,dy,1/60);}
+  assert.ok(w.y<g.RIVER_TOP+80,`quedó en ${w.y}`);
+  assert.ok(!g.STONES.some(p=>Math.hypot(p.x-w.x,p.y-w.y)<20));}
+ // Caso 3: volver desde mucho más al norte (como si hubiera seguido jugando y regresa a pie).
+ {const w={...world(),bloomed:true,progress:4,x:320,y:g.RIVER_TOP-400};w.challenges.river='done';w.challenges.stone=5;w.challenges.currentStone=-1;
+  for(let i=0;i<900;i++)frame(w,0,1,1/60); // 15s reales sosteniendo "abajo"
+  assert.ok(w.y<g.RIVER_TOP+78,`quedó en ${w.y}`);
+  assert.ok(!g.STONES.some(p=>Math.hypot(p.x-w.x,p.y-w.y)<20));}
 });
 test('Constelación de dos rondas: error conserva la primera y Simón es opcional',()=>{
  const w={...world(),bloomed:true,progress:7,...g.PLANTS[1]};g.activateChallenge(w,g.nearAction(w));tick(w,4.3);
