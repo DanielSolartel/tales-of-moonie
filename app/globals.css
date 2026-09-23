@@ -35,7 +35,13 @@ button:focus-visible,label:has(:focus-visible){outline:2px solid #ffdfa1;outline
 .moonie-shell{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;background:radial-gradient(ellipse at 50% 30%,#142849 0%,#080f23 48%,#040916 100%)}
 .game-frame{width:min(100%,1280px);aspect-ratio:16/9;position:relative;container-type:inline-size;overflow:hidden;background:#09132c;border:1px solid #314568;box-shadow:0 0 0 5px #080f22,0 25px 100px #0008;border-radius:4px}
 .world-canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
-html:fullscreen .game-frame{width:min(100%,calc((100svh - 85px)*16/9));}
+/* Fullscreen: the page has no header; the 85px reserve was the shell padding, the frame's
+   border and shadow, and the small "Tales of Moonie" caption below the game. They go away and the frame snaps to the largest whole multiple of 640x360
+   that fits (3x = 1920x1080 on a 1080p screen), centred on clean dark borders. The first width
+   is a fallback for browsers without CSS round(); below 640px wide a fraction is unavoidable. */
+html:fullscreen .moonie-shell{padding:0;background:#050b1b}
+html:fullscreen .below-game{display:none} /* the only page chrome outside the game: keeps the frame centred on whole pixels */
+html:fullscreen .game-frame{width:min(100vw,calc(100svh*16/9));width:max(round(down,min(100vw,calc(100svh*16/9)),640px),min(100vw,calc(100svh*16/9),639px));border:0;border-radius:0;box-shadow:none}
 .utility-bar{position:absolute;z-index:25;right:2.2%;top:3%;display:flex;gap:7px}
 .utility{width:36px;height:36px;display:grid;place-items:center;border:1px solid #718bb34d;background:#07142cbf;color:#d6e7ff;border-radius:6px;transition:background .2s}
 .utility:hover{background:#274868}

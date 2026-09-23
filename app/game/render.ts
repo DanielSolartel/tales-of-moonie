@@ -1,7 +1,7 @@
 import { Direction, FLOWER, Look, Scene, Progress, LANDMARKS, SECOND_FLOWER, THIRD_FLOWER, PATH, cameraY } from './story';
 import { Animation, animationFrame, bakeFrame } from './animation';
 import { faceAnchor, paintFace } from './face';
-import { PHOTO_TIMES, PHOTO_POSE_DURATION, photoFlash, gateRetreat, thirdBloomEnvelope } from './effects';
+import { PHOTO_TIMES, PHOTO_POSE_DURATION, photoFlash, gateRetreat, thirdBloomEnvelope, fireflyAt } from './effects';
 import { extractPoses, personalizePose } from './poses';
 import { extractChest, prepareFinalMap, FinalePoses } from './finale';
 import { AdventureArt } from './adventure-art';
@@ -253,10 +253,11 @@ export class MoonieRenderer {
       const x=cx*72+h(cx,cy,4)*72+Math.sin(t*(.35+h(cx,cy,5)*.45)+cx*1.7)*5,y=cy*72+h(cx,cy,6)*72-f*26;
       d.globalAlpha=Math.sin(Math.PI*f)*(.16+h(cx,cy,7)*.22);d.fillStyle=h(cx,cy,8)>.8?'#e4efff':'#b9d2f4';
       const s=h(cx,cy,9)>.86?2:1;d.fillRect(Math.round(x),Math.round(y-cam),s,s);}
-    for(let cy=Math.floor(cam/180)-1;cy<=Math.floor((cam+H)/180)+1;cy++)for(let cx=0;cx<4;cx++){
+    const near=cam*1.12; // leaves drift on a near plane, a touch faster than the ground: depth without touching terrain
+    for(let cy=Math.floor(near/180)-1;cy<=Math.floor((near+H)/180)+1;cy++)for(let cx=0;cx<4;cx++){
       if(h(cx,cy,11)>.4)continue;
       const period=12+h(cx,cy,12)*9,f=((t+h(cx,cy,13)*period)%period)/period;if(f>.42)continue; // seen only now and then
-      const g=f/.42,x=cx*160+h(cx,cy,14)*160+g*36+Math.sin(g*8+cx)*6,y=cy*180+h(cx,cy,15)*110+g*64,X=Math.round(x),Y=Math.round(y-cam),turn=Math.floor(g*7)%2;
+      const g=f/.42,x=cx*160+h(cx,cy,14)*160+g*36+Math.sin(g*8+cx)*6,y=cy*180+h(cx,cy,15)*110+g*64,X=Math.round(x),Y=Math.round(y-near),turn=Math.floor(g*7)%2;
       d.globalAlpha=Math.sin(Math.PI*g)*.7;d.fillStyle=h(cx,cy,16)>.5?'#3f8a86':'#2f6f8f';d.fillRect(X,Y,2,1);d.fillRect(turn?X+2:X-1,Y+(turn?1:-1),1,1);}
     d.restore();
   }
@@ -281,6 +282,7 @@ export class MoonieRenderer {
     this.drawCharacter(c,look,direction,canvas.width/2,canvas.height-5,Math.min(canvas.width/52,canvas.height/69));
   }
   private glow(c:CanvasRenderingContext2D,x:number,y:number,r:number,color:string) {
+    x=Math.round(x);y=Math.round(y);r=Math.round(r); // whole-pixel glows (Documento Maestro §607)
     const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
   }
   private drawSecondGate(c:CanvasRenderingContext2D,retreat:number){
@@ -336,18 +338,20 @@ export class MoonieRenderer {
   }
   private drawSeatedInClass(c:CanvasRenderingContext2D,look:Look,sleeping:boolean) {
     const tile=this.seatedVariant(look,sleeping),height=sleeping?137:142;
-    const width=tile.width/tile.height*height,x=sleeping?314:309,bottom=318;
+    const width=Math.round(tile.width/tile.height*height),x=sleeping?314:309,bottom=318; // approved size; whole-pixel rectangle
     c.save();c.imageSmoothingEnabled=false;
-    c.drawImage(tile,x-width/2,bottom-height,width,height);c.restore();
+    c.drawImage(tile,Math.round(x-width/2),bottom-height,width,height);c.restore();
     // Restoring these foreground fragments places Moonie inside the chair and
     // behind the desk while keeping her head and arms above the desktop.
     this.redrawClassroom(c,219,264,193,15);
     this.redrawClassroom(c,245,271,86,89);
   }
+  private parallaxCam=0; // camera of the frame being drawn, for decorative depth planes only
   draw(c:CanvasRenderingContext2D,w:World,reduced=false) {
+    this.parallaxCam=0;
     if(!this.loaded)return;
     if(!w.challenges||!['forest','letter','closing'].includes(w.scene)){this.drawBase(c,w,reduced);return;}
-    const q=w.challenges,view=this.adventure.camera(w),cam=view.y,legacy={...w,y:storyY(w.y)};
+    const q=w.challenges,view=this.adventure.camera(w),cam=view.y,legacy={...w,y:storyY(w.y)};this.parallaxCam=cam;
     const stage=this.stage||(this.stage=document.createElement('canvas'));stage.width=640;stage.height=360;
     const d=stage.getContext('2d')!;d.imageSmoothingEnabled=false;
     const segment=(top:number,bottom:number,offset:number,omitSign=false)=>{d.save();d.beginPath();d.rect(0,top-cam,640,bottom-top);d.clip();this.drawBase(d,legacy,reduced,cam+offset,true,omitSign);d.restore();};
@@ -397,7 +401,7 @@ export class MoonieRenderer {
     c.clearRect(0,0,640,360);c.imageSmoothingEnabled=false;
     if(w.scene==='end'){
       c.drawImage(this.finalMoon,0,0,640,360);
-      const x=503+Math.sin(w.time*.65)*3,y=107+Math.cos(w.time*.5)*4;
+      const x=Math.round(503+Math.sin(w.time*.65)*3),y=Math.round(107+Math.cos(w.time*.5)*4); // whole pixels
       this.glow(c,x,y,32,'rgba(255,222,159,.38)');c.drawImage(this.tiles[3][3],x-8,y-8,16,16);
       for(let i=0;i<7;i++){c.fillStyle=`rgba(255,232,175,${.6-i*.07})`;c.fillRect(Math.round(x+12+i*3),Math.round(y+5+Math.sin(i*.5)*5),2,2);}
       return;
@@ -421,7 +425,7 @@ export class MoonieRenderer {
       c.fillStyle='rgba(3,9,29,.32)';c.fillRect(0,0,640,360);
       const t=reduced?0:w.time;
       const star=this.tiles[3][3];
-      const sx=163+Math.sin(t*.45)*9,sy=52+Math.cos(t*.6)*7;
+      const sx=Math.round(163+Math.sin(t*.45)*9),sy=Math.round(52+Math.cos(t*.6)*7); // whole pixels
       this.glow(c,sx,sy,28,'rgba(255,221,144,.30)');
       c.drawImage(star,sx-8,sy-8,16,16);
     }
@@ -512,7 +516,7 @@ export class MoonieRenderer {
         sx=Math.round(this.guide.x);sy=Math.round(this.guide.y+Math.sin(w.time*2)*3);
         const pulse=(age<2.4||w.flowerPulse)?Math.pow(Math.max(0,Math.sin((age%2.4)*Math.PI*2/1.2)),4):.18;
         this.glow(c,sx,sy,24+pulse*9,`rgba(255,219,136,${.22+pulse*.25})`);
-        c.drawImage(this.tiles[3][3],sx-8,sy-8,16,16);
+        c.drawImage(this.tiles[3][3],Math.round(sx-8),Math.round(sy-8),16,16);
         for(let i=1;i<=5;i++){c.globalAlpha=.5-i*.075;c.fillStyle='#ffe4ae';c.fillRect(sx+Math.round(Math.sin(w.time*2-i)*4),sy+8+i*3,2,2);}c.globalAlpha=1;
       }
       // Existing leafy art forms a gate; both halves visibly withdraw on bloom.
@@ -584,9 +588,8 @@ export class MoonieRenderer {
     }
     const time=reduced?0:w.time;
     for(let i=0;i<27;i++) {
-      const x=(i*137%590)+25+Math.sin(time*.5+i)*5,y=(i*89%290)+35+Math.cos(time*.7+i)*4;
-      const opacity=.3+Math.sin(time*1.1+i)*.2;
-      this.glow(c,x,y,7,`rgba(247,218,139,${opacity*.8})`);c.fillStyle=`rgba(255,232,163,${opacity+.15})`;c.fillRect(Math.round(x),Math.round(y),1,1);
+      const f=fireflyAt(i,time,this.parallaxCam); // own speed, phase, path and blink; far plane
+      this.glow(c,f.x,f.y,7,`rgba(247,218,139,${f.opacity*.8})`);c.fillStyle=`rgba(255,232,163,${f.opacity+.15*f.edge})`;c.fillRect(f.x,f.y,1,1);
     }
     if(w.scene==='closing'){
       const t=w.finalTime||0;

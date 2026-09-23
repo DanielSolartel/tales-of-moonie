@@ -98,6 +98,23 @@ test('Cinemáticas: todo plano cercano es un fundido-corte anclado y la cámara 
   q.cinema=null;assert.deepEqual(g.cinemaCamera(w),before,`${kind}: la cámara no vuelve exacta`);
  }
 });
+test('Luciérnagas: vuelo individual, píxeles enteros, plano lejano y congeladas en pausa',async()=>{
+ const fx=await import(await compile('effects'));
+ const at=(t,cam=0)=>Array.from({length:27},(_,i)=>fx.fireflyAt(i,t,cam));
+ for(const t of [0,3.37,17.9,123.456])for(const f of at(t,-777.3)){assert.ok(Number.isInteger(f.x)&&Number.isInteger(f.y),'posición no entera');}
+ assert.deepEqual(at(42.5,-300),at(42.5,-300),'con el mismo tiempo (pausa) no se mueven');
+ // En un mismo intervalo cada una se desplaza distinto: no vuelan en bloque.
+ // Ventana de 3,5 s: en menos tiempo los desplazamientos redondeados a píxel coinciden por discretización.
+ const a=at(10),b=at(13.5),moves=new Set(a.map((f,i)=>`${b[i].x-f.x},${b[i].y-f.y}`));
+ assert.ok(moves.size>=20,`solo ${moves.size} desplazamientos distintos entre 27 luciérnagas`);
+ const blinkA=at(5).map(f=>f.opacity),blinkB=at(5.6).map(f=>f.opacity),rises=blinkA.filter((o,i)=>blinkB[i]>o).length;
+ assert.ok(rises>4&&rises<23,'los parpadeos no deben ir sincronizados');
+ // Plano lejano: al mover la cámara 100 unidades, la banda se desplaza 12 (módulo 290).
+ const band=(i,cam)=>((((i*89)%290)-cam*fx.FIREFLY_PLANE)%290+290)%290;
+ assert.ok(Math.abs(((band(5,0)-band(5,100))+290)%290-12)<1e-9);
+ // Al envolver en los bordes de la banda se desvanecen: nunca aparecen de golpe.
+ for(let cam=0;cam<2500;cam+=7)for(const f of at(9,cam)){const edge=f.edge;if(edge<.05)assert.ok(f.opacity<.05,'aparición brusca al envolver');}
+});
 test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
  // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
  // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.
