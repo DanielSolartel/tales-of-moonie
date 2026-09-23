@@ -74,6 +74,30 @@ test('Salida del laberinto: revelación anclada, sin retroceso, posición intact
   assert.equal(w.challenges.cinema,null,'volver a cruzar no repite la revelación');
  }
 });
+test('Cinemáticas: todo plano cercano es un fundido-corte anclado y la cámara vuelve exacta',()=>{
+ // Espíritus, ritual, flores y bookReveal: mientras el plano abierto se funde no hay ningún
+ // deslizamiento (encuadre idéntico al previo); el plano cercano queda fijo en su sujeto; al
+ // terminar, la cámara es exactamente la del juego. Las panorámicas amplias arrancan suaves.
+ for(const [kind,index,x,y] of [['spirit',0,200,520],['spirit',2,450,560],['ritual',0,342,230],['bloom2',0,360,g.worldY(-600)],['bloom3',0,342,g.worldY(-1280)],['bookReveal',0,328,g.MAZE_TOP-2]]){
+  const w={x,y,direction:'back',bloomed:true,progress:3,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const before=g.cinemaCamera(w);g.startCinema(w,kind,index,4);const q=w.challenges;let anchored=null,sawClose=false;
+  for(let t=0;t<4;t+=1/60){q.cinema.time=t;const cam=g.cinemaCamera(w);
+   if(cam.close<.5)assert.equal(cam.y,before.y,`${kind}: el plano abierto se deslizó en t=${t.toFixed(2)}`);
+   else{sawClose=true;if(anchored===null)anchored=cam.y;assert.equal(cam.y,anchored,`${kind}: el plano cercano no está anclado`);}
+   assert.deepEqual({x:w.x,y:w.y},{x,y},`${kind}: Moonie no se mueve`);}
+  assert.ok(sawClose,`${kind}: debe llegar al plano cercano`);q.cinema=null;
+  assert.deepEqual(g.cinemaCamera(w),before,`${kind}: la cámara no vuelve exacta`);
+ }
+ // Cada panorámica parte del lugar donde ocurre en la historia: la orilla del arroyo, o el
+ // claro de las plantas para la demostración del patrón y la constelación.
+ for(const [kind,y0] of [['riverDemo',g.RIVER_SHORE.y],['patternDemo',g.worldY(-1200)],['constellation',g.worldY(-1200)]]){
+  const w={x:320,y:y0,direction:'back',bloomed:true,progress:3,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const before=g.cinemaCamera(w);g.startCinema(w,kind,0,5);const q=w.challenges;
+  q.cinema.time=1/60;assert.ok(Math.abs(g.cinemaCamera(w).y-before.y)<=1,`${kind}: la panorámica arranca de golpe`);
+  q.cinema.time=5-1/60;assert.ok(Math.abs(g.cinemaCamera(w).y-before.y)<=1,`${kind}: la panorámica frena de golpe`);
+  q.cinema=null;assert.deepEqual(g.cinemaCamera(w),before,`${kind}: la cámara no vuelve exacta`);
+ }
+});
 test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
  // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
  // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.

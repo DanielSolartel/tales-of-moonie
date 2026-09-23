@@ -223,6 +223,43 @@ export class MoonieRenderer {
     tc.globalCompositeOperation='destination-in';tc.drawImage(this.entryMaskB!,0,0);tc.globalCompositeOperation='source-over';
     d.drawImage(t,X0,sy0);
   }
+  // ---- Atmosphere (final aesthetic pass) ----
+  // Gradual light by area, from the story position of the view centre: a faint water sheen by
+  // the stream, a slightly deeper tone on the hidden path, and silver moonlight pools that make
+  // the final clearings the most luminous places. Cool tones only: warm yellow stays reserved for
+  // the star and fireflies (Documento Maestro). Drawn on terrain before any object or character.
+  private zoneLight(d:CanvasRenderingContext2D,cam:number){
+    const sy=storyY(cam+180),H=d.canvas.height,ease=(a:number,b:number,v:number)=>{const t=Math.max(0,Math.min(1,(v-a)/(b-a)));return t*t*(3-2*t);};
+    const river=ease(-400,-470,sy)*(1-ease(-600,-680,sy)),hidden=ease(-660,-760,sy)*(1-ease(-1080,-1160,sy));
+    const plants=ease(-1110,-1190,sy)*(1-ease(-1400,-1470,sy)),chest=ease(-1400,-1480,sy);
+    d.save();
+    if(hidden>0){d.globalCompositeOperation='multiply';d.fillStyle=`rgba(118,132,186,${.12*hidden})`;d.fillRect(0,0,640,H);}
+    d.globalCompositeOperation='screen';
+    if(river>0){d.fillStyle=`rgba(120,170,235,${.06*river})`;d.fillRect(0,0,640,H);}
+    const pool=(cx:number,cyStory:number,rad:number,a:number)=>{if(a<=0)return;const cy=worldY(cyStory)-cam,g=d.createRadialGradient(cx,cy,0,cx,cy,rad);
+      g.addColorStop(0,`rgba(214,230,255,${a})`);g.addColorStop(.55,`rgba(190,212,250,${a*.45})`);g.addColorStop(1,'rgba(190,212,250,0)');d.fillStyle=g;d.fillRect(0,0,640,H);};
+    pool(320,-1235,210,.10*plants);pool(320,-1590,250,.14*chest);
+    d.restore();
+  }
+  // Moon motes everywhere and an occasional drifting leaf, seeded per world cell with their own
+  // period and phase so nothing moves in lockstep. Game time only (pause freezes them), whole
+  // pixels only, and drawn behind every object and character.
+  private atmosphere(d:CanvasRenderingContext2D,w:World,cam:number){
+    const t=w.time,H=d.canvas.height,h=(a:number,b:number,k:number)=>{const s=Math.sin(a*127.1+b*311.7+k*74.7)*43758.5453;return s-Math.floor(s);};
+    d.save();
+    for(let cy=Math.floor(cam/72)-1;cy<=Math.floor((cam+H)/72)+1;cy++)for(let cx=0;cx<9;cx++){
+      if(h(cx,cy,1)>.6)continue;
+      const period=7+h(cx,cy,2)*6,f=((t+h(cx,cy,3)*period)%period)/period;
+      const x=cx*72+h(cx,cy,4)*72+Math.sin(t*(.35+h(cx,cy,5)*.45)+cx*1.7)*5,y=cy*72+h(cx,cy,6)*72-f*26;
+      d.globalAlpha=Math.sin(Math.PI*f)*(.16+h(cx,cy,7)*.22);d.fillStyle=h(cx,cy,8)>.8?'#e4efff':'#b9d2f4';
+      const s=h(cx,cy,9)>.86?2:1;d.fillRect(Math.round(x),Math.round(y-cam),s,s);}
+    for(let cy=Math.floor(cam/180)-1;cy<=Math.floor((cam+H)/180)+1;cy++)for(let cx=0;cx<4;cx++){
+      if(h(cx,cy,11)>.4)continue;
+      const period=12+h(cx,cy,12)*9,f=((t+h(cx,cy,13)*period)%period)/period;if(f>.42)continue; // seen only now and then
+      const g=f/.42,x=cx*160+h(cx,cy,14)*160+g*36+Math.sin(g*8+cx)*6,y=cy*180+h(cx,cy,15)*110+g*64,X=Math.round(x),Y=Math.round(y-cam),turn=Math.floor(g*7)%2;
+      d.globalAlpha=Math.sin(Math.PI*g)*.7;d.fillStyle=h(cx,cy,16)>.5?'#3f8a86':'#2f6f8f';d.fillRect(X,Y,2,1);d.fillRect(turn?X+2:X-1,Y+(turn?1:-1),1,1);}
+    d.restore();
+  }
   drawCharacter(ctx:CanvasRenderingContext2D,look:Look,direction:Direction,x:number,y:number,scale=1,frame=0,state:Animation='idle') {
     const key=`${look.outfit}/${look.skin}/${look.face}/${direction}/${state}/${frame}`;
     if(!this.frames.has(key)){
@@ -325,6 +362,8 @@ export class MoonieRenderer {
     d.drawImage(this.adventure.river,0,RIVER_TOP-cam-20);
     d.drawImage(this.adventure.mazeJoin,0,MAZE_TOP-185-cam);
     d.drawImage(this.adventure.riverJoin,0,RIVER_TOP-190-cam);
+    this.zoneLight(d,cam);   // terrain only: never tints or covers characters, books or flowers
+    this.atmosphere(d,w,cam);
     this.adventure.draw(d,w,cam);
     // All world objects are composited after terrain, never beneath a map edge.
     for(const object of this.foreground){const y=worldY(object.y);if(w.y<y||y<cam-80||y>cam+450)continue;d.save();d.translate(0,y-object.y-cam);object.draw();d.restore();}
@@ -434,7 +473,7 @@ export class MoonieRenderer {
       const objects=[{y:LANDMARKS.chest.y,draw:()=>{
         const {x,y}=LANDMARKS.chest,age=w.chestTime===undefined?-1:w.time-w.chestTime;
         const pose=age<0?0:age<.75?1:2;
-        this.glow(c,x,y-18,45,`rgba(190,225,255,${pose?.32:.12})`);c.drawImage(this.chest[pose],x-29,y-62);
+        this.glow(c,x,y-18,45,`rgba(190,225,255,${pose?.32:.11+Math.sin(w.time*1.1)*.035})`);c.drawImage(this.chest[pose],x-29,y-62); // closed chest halo breathes slowly
       }},{y:f.y,draw:drawFlower},{y:SECOND_FLOWER.y,draw:flower2},{y:THIRD_FLOWER.y,draw:flower3},{y:LANDMARKS.simon.y,draw:dog},...(['book1','book2','book3'] as const).map((kind,i)=>({y:LANDMARKS[kind].y,draw:()=>{
         const o=LANDMARKS[kind],open=w.reading===kind;
         this.glow(c,o.x,o.y-23,26,'rgba(192,219,255,.14)');

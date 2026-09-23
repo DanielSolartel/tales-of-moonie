@@ -230,7 +230,11 @@ export function cinemaCamera(w:ChallengeWorld){
   // pre-cinema framing through the fade to dark, cuts to the book (2x) for the hold, and fades
   // back to that same framing. The old version panned 40px toward the book and back while
   // Moonie stood frozen, which read as bumping into something. Moonie's position is untouched.
-  if(s.kind==='bookReveal')return envelope>=.5?{y:Math.round(target.y-180),x:target.x,close:envelope}:{y:gameCamera(s.origin.y),x:Math.round(s.origin.x),close:envelope};
-  const y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*envelope);
-  return {y,x:target.x,close:['riverDemo','patternDemo','constellation'].includes(s.kind)?0:envelope};
+  // Every close shot (spirits, ritual, blooms, bookReveal) is a fade-cut anchored on its subject:
+  // the wide view holds the exact pre-cinema framing while it fades, and the fade back lands on
+  // that same framing. Nothing slides before the cut, so no shot reads as a bump.
+  if(!['riverDemo','patternDemo','constellation'].includes(s.kind))return envelope>=.5?{y:Math.round(target.y-180),x:target.x,close:envelope}:{y:gameCamera(s.origin.y),x:Math.round(s.origin.x),close:envelope};
+  // Wide shots pan, eased in and out so the camera never starts or stops abruptly.
+  const e=envelope*envelope*(3-2*envelope),y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*e);
+  return {y,x:target.x,close:0};
  }
