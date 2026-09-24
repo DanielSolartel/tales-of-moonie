@@ -215,7 +215,9 @@ export const guideGlowActive=(w:ChallengeWorld)=>{const q=w.challenges!;return !
 // Camera for play and cinemas (moved verbatim from AdventureArt.camera so it can be tested).
 export function cinemaCamera(w:ChallengeWorld){
   const q=w.challenges!,s=q.cinema,focus=q.riverFocus||0,clamp=(v:number)=>Math.max(0,Math.min(1,v));
-  if(!s)return {y:Math.round(gameCamera(w.y)+(w.y-180-gameCamera(w.y))*focus),x:Math.round(w.x),close:focus};
+  if(!s){const m=momentShot(w as MomentWorld);
+    if(m&&m.e>0)return m.e>=.5?{y:Math.round(m.y-180),x:Math.round(m.x),close:m.e}:{y:gameCamera(w.y),x:Math.round(w.x),close:m.e};
+    return {y:Math.round(gameCamera(w.y)+(w.y-180-gameCamera(w.y))*focus),x:Math.round(w.x),close:focus};}
   let target={x:w.x,y:w.y-24};
   if(s.kind==='spirit')target=LIGHTS[s.index];
   if(s.kind==='ritual')target={x:365,y:195};
@@ -230,7 +232,30 @@ export function cinemaCamera(w:ChallengeWorld){
   // pre-cinema framing through the fade to dark, cuts to the book (2x) for the hold, and fades
   // back to that same framing. The old version panned 40px toward the book and back while
   // Moonie stood frozen, which read as bumping into something. Moonie's position is untouched.
-  if(s.kind==='bookReveal')return envelope>=.5?{y:Math.round(target.y-180),x:target.x,close:envelope}:{y:gameCamera(s.origin.y),x:Math.round(s.origin.x),close:envelope};
-  const y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*envelope);
-  return {y,x:target.x,close:['riverDemo','patternDemo','constellation'].includes(s.kind)?0:envelope};
+  // Every close shot (spirits, ritual, blooms, bookReveal) is a fade-cut anchored on its subject:
+  // the wide view holds the exact pre-cinema framing while it fades, and the fade back lands on
+  // that same framing. Nothing slides before the cut, so no shot reads as a bump.
+  if(!['riverDemo','patternDemo','constellation'].includes(s.kind))return envelope>=.5?{y:Math.round(target.y-180),x:target.x,close:envelope}:{y:gameCamera(s.origin.y),x:Math.round(s.origin.x),close:envelope};
+  // Wide shots pan, eased in and out so the camera never starts or stops abruptly.
+  const e=envelope*envelope*(3-2*envelope),y=Math.round(gameCamera(s.origin.y)+(target.y-180-gameCamera(s.origin.y))*e);
+  return {y,x:target.x,close:0};
  }
+
+// Director's cut: close shots for dialogue moments, built only from approved dedicated poses (the
+// fallen pose, Simón's photo pose, the chest states, the final smile). Same language as every other
+// close shot: fade to dark on the unchanged gameplay framing, a 2x shot anchored on the subject, and
+// a fade back to exactly the gameplay framing. Moonie is never moved; game time only, so pause holds.
+type MomentWorld=ChallengeWorld&{scene?:string;motion?:string|null;motionTime?:number;chestTime?:number;finalTime?:number;simonTime:number};
+export const SIMON_SHOT=2.9;
+export type MomentKind='closing'|'fall'|'simon'|'chest';
+export function momentShot(w:MomentWorld):{x:number;y:number;e:number;kind:MomentKind}|null{
+  const c=(v:number)=>Math.max(0,Math.min(1,v));
+  if(w.scene==='closing'){const t=w.finalTime||0,e=c((t-.2)/.4)*c((2.9-t)/.4);return e>0?{x:w.x,y:w.y-22,e,kind:'closing'}:null;} // smile; the ascent stays wide
+  if(w.scene!=='forest')return null;
+  if(w.motion==='fallen')return {x:w.x,y:w.y-14,e:c((w.motionTime||0)/.6),kind:'fall'};                    // fall and crutches dialogue
+  if(w.motion==='rise'){const e=1-c((w.motionTime||0)/.6);return e>0?{x:w.x,y:w.y-14,e,kind:'fall'}:null;}
+  if(w.simonMet&&w.simonTime>=0){const age=w.time-w.simonTime;if(age>=0&&age<SIMON_SHOT){const S=LANDMARKS.simon;  // photo session: in before the first flash
+    return {x:Math.round((w.x+S.x)/2),y:Math.round((w.y+worldY(S.y))/2)-18,e:c(age/.25)*c((SIMON_SHOT-age)/.4),kind:'simon'};}}
+  if(w.chestTime!==undefined){const age=w.time-w.chestTime,C=LANDMARKS.chest;if(age>=0)return {x:C.x,y:worldY(C.y)+6,e:c(age/.4),kind:'chest'};}  // opening, until the letter
+  return null;
+}

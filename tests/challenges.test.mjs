@@ -74,6 +74,85 @@ test('Salida del laberinto: revelación anclada, sin retroceso, posición intact
   assert.equal(w.challenges.cinema,null,'volver a cruzar no repite la revelación');
  }
 });
+test('Cinemáticas: todo plano cercano es un fundido-corte anclado y la cámara vuelve exacta',()=>{
+ // Espíritus, ritual, flores y bookReveal: mientras el plano abierto se funde no hay ningún
+ // deslizamiento (encuadre idéntico al previo); el plano cercano queda fijo en su sujeto; al
+ // terminar, la cámara es exactamente la del juego. Las panorámicas amplias arrancan suaves.
+ for(const [kind,index,x,y] of [['spirit',0,200,520],['spirit',2,450,560],['ritual',0,342,230],['bloom2',0,360,g.worldY(-600)],['bloom3',0,342,g.worldY(-1280)],['bookReveal',0,328,g.MAZE_TOP-2]]){
+  const w={x,y,direction:'back',bloomed:true,progress:3,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const before=g.cinemaCamera(w);g.startCinema(w,kind,index,4);const q=w.challenges;let anchored=null,sawClose=false;
+  for(let t=0;t<4;t+=1/60){q.cinema.time=t;const cam=g.cinemaCamera(w);
+   if(cam.close<.5)assert.equal(cam.y,before.y,`${kind}: el plano abierto se deslizó en t=${t.toFixed(2)}`);
+   else{sawClose=true;if(anchored===null)anchored=cam.y;assert.equal(cam.y,anchored,`${kind}: el plano cercano no está anclado`);}
+   assert.deepEqual({x:w.x,y:w.y},{x,y},`${kind}: Moonie no se mueve`);}
+  assert.ok(sawClose,`${kind}: debe llegar al plano cercano`);q.cinema=null;
+  assert.deepEqual(g.cinemaCamera(w),before,`${kind}: la cámara no vuelve exacta`);
+ }
+ // Cada panorámica parte del lugar donde ocurre en la historia: la orilla del arroyo, o el
+ // claro de las plantas para la demostración del patrón y la constelación.
+ for(const [kind,y0] of [['riverDemo',g.RIVER_SHORE.y],['patternDemo',g.worldY(-1200)],['constellation',g.worldY(-1200)]]){
+  const w={x:320,y:y0,direction:'back',bloomed:true,progress:3,time:20,secondBloomTime:0,thirdBloomTime:0,challenges:g.freshChallenges(0)};
+  const before=g.cinemaCamera(w);g.startCinema(w,kind,0,5);const q=w.challenges;
+  q.cinema.time=1/60;assert.ok(Math.abs(g.cinemaCamera(w).y-before.y)<=1,`${kind}: la panorámica arranca de golpe`);
+  q.cinema.time=5-1/60;assert.ok(Math.abs(g.cinemaCamera(w).y-before.y)<=1,`${kind}: la panorámica frena de golpe`);
+  q.cinema=null;assert.deepEqual(g.cinemaCamera(w),before,`${kind}: la cámara no vuelve exacta`);
+ }
+});
+test('Luciérnagas: vuelo individual, píxeles enteros, plano lejano y congeladas en pausa',async()=>{
+ const fx=await import(await compile('effects'));
+ const at=(t,cam=0)=>Array.from({length:27},(_,i)=>fx.fireflyAt(i,t,cam));
+ for(const t of [0,3.37,17.9,123.456])for(const f of at(t,-777.3)){assert.ok(Number.isInteger(f.x)&&Number.isInteger(f.y),'posición no entera');}
+ assert.deepEqual(at(42.5,-300),at(42.5,-300),'con el mismo tiempo (pausa) no se mueven');
+ // En un mismo intervalo cada una se desplaza distinto: no vuelan en bloque.
+ // Ventana de 3,5 s: en menos tiempo los desplazamientos redondeados a píxel coinciden por discretización.
+ const a=at(10),b=at(13.5),moves=new Set(a.map((f,i)=>`${b[i].x-f.x},${b[i].y-f.y}`));
+ assert.ok(moves.size>=20,`solo ${moves.size} desplazamientos distintos entre 27 luciérnagas`);
+ const blinkA=at(5).map(f=>f.opacity),blinkB=at(5.6).map(f=>f.opacity),rises=blinkA.filter((o,i)=>blinkB[i]>o).length;
+ assert.ok(rises>4&&rises<23,'los parpadeos no deben ir sincronizados');
+ // Plano lejano: al mover la cámara 100 unidades, la banda se desplaza 12 (módulo 290).
+ const band=(i,cam)=>((((i*89)%290)-cam*fx.FIREFLY_PLANE)%290+290)%290;
+ assert.ok(Math.abs(((band(5,0)-band(5,100))+290)%290-12)<1e-9);
+ // Al envolver en los bordes de la banda se desvanecen: nunca aparecen de golpe.
+ for(let cam=0;cam<2500;cam+=7)for(const f of at(9,cam)){const edge=f.edge;if(edge<.05)assert.ok(f.opacity<.05,'aparición brusca al envolver');}
+});
+test('Planos cercanos de los momentos (caída, fotos de Simón, cofre, sonrisa): anclados y con retorno exacto',()=>{
+ const S={x:430,y:g.worldY(-1250)},C={x:320,y:g.worldY(-1620)};
+ const mk=(extra)=>({x:342,y:g.worldY(-1106),direction:'back',bloomed:true,progress:7,time:40,secondBloomTime:0,thirdBloomTime:10,simonMet:false,simonTime:-1,scene:'forest',motion:null,motionTime:0,challenges:g.freshChallenges(0),...extra});
+ const play=(w)=>{const q=w.challenges;q.cinema=null;const m=w.motion,st=w.simonTime,ct=w.chestTime,sc=w.scene;w.motion=null;w.simonTime=-1;delete w.chestTime;w.scene='forest';const cam=g.cinemaCamera(w);w.motion=m;w.simonTime=st;if(ct!==undefined)w.chestTime=ct;w.scene=sc;return cam;};
+ const check=(label,w,set,from,to,step=1/60)=>{const pos={x:w.x,y:w.y},free=play(w);let anchor=null,close=false;
+  for(let t=from;t<=to;t+=step){set(t);const cam=g.cinemaCamera(w);
+   if(cam.close<.5)assert.equal(cam.y,free.y,`${label}: deslizamiento en t=${t.toFixed(2)}`);else{close=true;if(anchor===null)anchor=cam.y;assert.equal(cam.y,anchor,`${label}: plano cercano no anclado`);}
+   assert.deepEqual({x:w.x,y:w.y},pos,`${label}: Moonie se movió`);}
+  assert.ok(close,`${label}: sin plano cercano`);return free;};
+ // Caída: plano cercano mientras permanece caída; se abre al levantarse y vuelve exacto.
+ let w=mk({motion:'fallen'});let free=check('caída',w,t=>{w.motion='fallen';w.motionTime=t;},0,2.5);
+ w.motion='rise';w.motionTime=.7;assert.deepEqual(g.cinemaCamera(w),free,'tras levantarse la cámara vuelve exacta');
+ // Simón: los tres flashes (0,30 · 0,95 · 1,60 s) caen dentro del plano cercano.
+ w=mk({x:S.x-40,y:S.y+10,simonMet:true,simonTime:40});free=check('Simón',w,t=>{w.time=40+t;},0,3.2);
+ for(const f of [.30,.95,1.60]){w.time=40+f+.03;assert.ok(g.cinemaCamera(w).close>=1,`flash ${f}s fuera del plano cercano`);}
+ w.time=40+3.2;assert.deepEqual(g.cinemaCamera(w),free);
+ // Cofre: desde la apertura hasta la carta.
+ w=mk({x:C.x,y:C.y+40,progress:8,chestTime:40});check('cofre',w,t=>{w.time=40+t;},0,2);
+ // Cierre: la sonrisa en plano cercano; la ascensión de la estrella (3 s) en plano general.
+ w=mk({x:C.x,y:C.y+40,progress:8,scene:'closing',finalTime:0});check('sonrisa',w,t=>{w.finalTime=t;},0,2.95);
+ for(const t of [3,5.2,8]){w.finalTime=t;assert.ok(g.cinemaCamera(w).close===0,`la ascensión (t=${t}) debe verse en plano general`);}
+ // Sin momento activo la cámara es exactamente la de juego.
+ w=mk({});assert.deepEqual(g.cinemaCamera(w),{y:g.gameCamera(w.y),x:Math.round(w.x),close:0});
+});
+test('Poses de referencia aprobadas: seis poses × tres atuendos con anclajes dentro del lienzo',async()=>{
+ const R=await import(await compile('referencias'));
+ for(const pose of ['tropiezo','apoyo','recostada','levantarse','libro','carta'])for(const o of ['real','artist','explorer']){
+  const q=R.REF_POSES[pose][o];assert.ok(q,`${pose}/${o} falta`);const a=q.anchor;
+  assert.ok(a.eyes[0]>=0&&a.eyes[1]<q.w&&a.eyes[0]<a.eyes[1]&&a.y>=0&&a.y<q.h,`${pose}/${o}: ojos fuera del lienzo`);
+  assert.ok(a.eyes[1]-a.eyes[0]>=6&&a.eyes[1]-a.eyes[0]<=11,`${pose}/${o}: separación de ojos ${a.eyes[1]-a.eyes[0]} fuera de la escala del juego`);
+  if(['libro','carta'].includes(pose))assert.ok(q.h<=67&&q.w<=48,`${pose}/${o}: de pie debe caber en la escala jugable (${q.w}x${q.h})`);
+  if(['apoyo','recostada'].includes(pose))assert.ok(q.w>q.h,`${pose}/${o}: pose horizontal sin comprimir`);}
+ for(const g of ['reflejos','hojas','petalos','destellos'])assert.ok(R.REF_FX[g].length>0,`efecto ${g} vacío`);
+});
+test('momentShot indica el tipo de plano cercano',()=>{
+ const w={x:342,y:g.worldY(-1106),bloomed:true,progress:7,time:40,secondBloomTime:0,thirdBloomTime:10,simonMet:false,simonTime:-1,scene:'forest',motion:'fallen',motionTime:1,challenges:g.freshChallenges(0)};
+ assert.equal(g.momentShot(w).kind,'fall');w.motion=null;w.chestTime=39;assert.equal(g.momentShot(w).kind,'chest');w.scene='closing';w.finalTime=1;assert.equal(g.momentShot(w).kind,'closing');
+});
 test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
  // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
  // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.

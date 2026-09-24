@@ -41,6 +41,7 @@ export default function MoonieGame() {
   const [audioOn,setAudioOn]=useState(false);
   const [fullError,setFullError]=useState('');
   const canvas=useRef<HTMLCanvasElement>(null),preview=useRef<HTMLCanvasElement>(null),frame=useRef<HTMLDivElement>(null);
+  const dialogueBox=useRef<HTMLDivElement>(null);
   const renderer=useRef<MoonieRenderer|null>(null),audio=useRef<MoonieAudio|null>(null);
   const keys=useRef(new Set<string>()),stepTimer=useRef(0),dialogueTimer=useRef(0),advanceRef=useRef(()=>{});
   const live=useRef({scene,look,paused,dialogue,bloomed,finished,visibleChars,progress});
@@ -105,7 +106,14 @@ export default function MoonieGame() {
     function tick(ms:number) {
       if(dead)return;
       const dt=Math.min((ms-(last||ms))/1000,.04);last=ms;
-      const w=world.current,s=live.current;w.scene=s.scene;w.look=s.look;w.bloomed=s.bloomed;w.progress=s.progress;
+      const w=world.current as World & {dialogueTop?:number},s=live.current;w.scene=s.scene;w.look=s.look;w.bloomed=s.bloomed;w.progress=s.progress;
+      if(w.motion==='fallen'&&dialogueBox.current&&canvas.current){
+        const box=dialogueBox.current.getBoundingClientRect(),view=canvas.current.getBoundingClientRect();
+        // Reserve the tallest dialogue encountered, so typewriter wrapping never moves
+        // Moonie down again. Keep this framing through recovery, then discard it.
+        const top=(box.top-view.top)*360/view.height;
+        w.dialogueTop=Math.min(w.dialogueTop??240,top);
+      }else if(!w.motion)w.dialogueTop=undefined;
       w.reading=s.dialogue?.kind==='book1'||s.dialogue?.kind==='book2'||s.dialogue?.kind==='book3'?s.dialogue.kind:null;
       w.starGreeting=s.dialogue?.kind==='star';w.flowerPulse=s.dialogue?.kind==='flower3';
       if(!s.paused) {
@@ -247,7 +255,7 @@ export default function MoonieGame() {
           {!dialogue&&!opening&&<div className="movement-hint"><span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Mover</span><span><kbd>E</kbd> Interactuar</span><span><kbd>Esc</kbd> Pausa</span></div>}
           {bloomNotice&&!dialogue&&<div className="bloom-toast" style={{opacity:noticeOpacity}} role="status"><Flower2 size={14}/> Una flor lunar ha despertado</div>}
         </>}
-        {line&&<div className={`dialogue ${bookPage?'book-reading':''}`} role="group" aria-label={`Diálogo de ${line.speaker}`}>
+        {line&&<div ref={dialogueBox} className={`dialogue ${bookPage?'book-reading':''}`} role="group" aria-label={`Diálogo de ${line.speaker}`}>
           <span className="speaker">{line.speaker}{line.thought&&<span> · pensando</span>}</span>
           {bookPage&&<div className="book-vignette" aria-hidden="true"><img src={renderer.current?.bookPages[dialogue?.kind==='book3'?2:dialogue?.kind==='book2'?1:0]} width={512} height={340} alt="" loading="eager" decoding="sync"/></div>}
           <p aria-live="polite" aria-label={line.text}><span aria-hidden="true">{line.text.slice(0,visibleChars)}</span><span className="sr-only">{line.text}</span></p>

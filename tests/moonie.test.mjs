@@ -89,7 +89,7 @@ test('Cofre y carta contienen literalmente el texto autorizado',async()=>{
   const master=await readFile(new URL('../docs/Documento-Maestro.md',import.meta.url),'utf8');
   for(const line of story.CHEST_LINES)assert.ok(master.includes('> '+line.text));
   for(const line of story.LETTER)assert.ok(master.includes('> '+line));
-  assert.equal(story.LETTER[2],'Sábado 05/09/2026');
+  assert.equal(story.LETTER[2],'Sábado 03/10/2026');
   const ui=await readFile(new URL('../app/game/MoonieGame.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(ui,/Prueba completada|setFinished/);
   assert.match(ui,/FIN… POR AHORA 🌙/);

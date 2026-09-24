@@ -481,7 +481,7 @@ Moonie abre el cofre y aparece la carta.
 >
 > La próxima aventura comienza el...
 >
-> Sábado 05/09/2026
+> Sábado 03/10/2026
 >
 > Te espero. ❤️
 

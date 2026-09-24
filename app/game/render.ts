@@ -1,12 +1,13 @@
 import { Direction, FLOWER, Look, Scene, Progress, LANDMARKS, SECOND_FLOWER, THIRD_FLOWER, PATH, cameraY } from './story';
 import { Animation, animationFrame, bakeFrame } from './animation';
 import { faceAnchor, paintFace } from './face';
-import { PHOTO_TIMES, PHOTO_POSE_DURATION, photoFlash, gateRetreat, thirdBloomEnvelope } from './effects';
+import { PHOTO_TIMES, PHOTO_POSE_DURATION, photoFlash, gateRetreat, thirdBloomEnvelope, fireflyAt } from './effects';
 import { extractPoses, personalizePose } from './poses';
 import { extractChest, prepareFinalMap, FinalePoses } from './finale';
 import { AdventureArt } from './adventure-art';
 import { RIVER_TOP, RIVER_BOTTOM, MAZE_HEIGHT, WORLD_EXTENSION, patternSequence, worldY } from './adventure';
-import { Challenges, MAZE_TOP, MAZE_BOTTOM, storyY, PLANTS, LIGHTS } from './challenges';
+import { Challenges, MAZE_TOP, MAZE_BOTTOM, storyY, PLANTS, LIGHTS, momentShot } from './challenges';
+import { REF_POSES, REF_FX, RefPose, rootShotLayout } from './referencias';
 
 export type World = { scene:Scene; x:number; y:number; direction:Direction; walking:boolean; time:number; bloomed:boolean; bloomTime:number; dreamTime:number; sleeping:boolean; look:Look; animationTime:number; interactionTime:number; progress:Progress; secondBloomTime:number; reading: 'book1'|'book2'|'book3'|null; thirdBloomTime:number; motion:'fall'|'fallen'|'rise'|null; motionTime:number; starTime:number; simonMet:boolean; simonTime:number; starGreeting:boolean; flowerPulse:boolean; chestTime?:number; finalTime?:number; challenges?:Challenges };
 type Tile = HTMLCanvasElement;
@@ -45,6 +46,8 @@ export class MoonieRenderer {
     this.clearing=forest;this.classroom=room;this.sendero=sendero;this.hiddenPath=hiddenPath;
     this.edges=[this.edgeTile(clearingEdge,21,678),this.edgeTile(hiddenEdge,23,678)];
     const [realPoses,themedPoses]=await Promise.all([load('/assets/fall-poses-real.png'),load('/assets/fall-poses-themed.png')]);
+    // Approved reference poses, close-up plate and effect sprites: loaded before play starts (no pop-in).
+    [this.refPoses,this.refPanels,this.refFx]=await Promise.all([load('/assets/moonie-poses-referencias.png'),load('/assets/planos-cercanos-ambientes.png'),load('/assets/efectos-referencias.png')]);
     this.poses=[extractPoses(realPoses,0),extractPoses(themedPoses,1),extractPoses(themedPoses,2)];
     const [finalMap,finalMoon,chest,finalPoses]=await Promise.all([load('/assets/final-clearing.png'),load('/assets/final-moon.png'),load('/assets/chest.png'),load('/assets/finale-poses.png')]);
     this.finalMap=prepareFinalMap(finalMap);this.finalMoon=finalMoon;this.chest=extractChest(chest);this.finalePoses=new FinalePoses(finalPoses);
@@ -223,7 +226,71 @@ export class MoonieRenderer {
     tc.globalCompositeOperation='destination-in';tc.drawImage(this.entryMaskB!,0,0);tc.globalCompositeOperation='source-over';
     d.drawImage(t,X0,sy0);
   }
+  // ---- Atmosphere (final aesthetic pass) ----
+  // Gradual light by area, from the story position of the view centre: a faint water sheen by
+  // the stream, a slightly deeper tone on the hidden path, and silver moonlight pools that make
+  // the final clearings the most luminous places. Cool tones only: warm yellow stays reserved for
+  // the star and fireflies (Documento Maestro). Drawn on terrain before any object or character.
+  private zoneLight(d:CanvasRenderingContext2D,cam:number){
+    const sy=storyY(cam+180),H=d.canvas.height,ease=(a:number,b:number,v:number)=>{const t=Math.max(0,Math.min(1,(v-a)/(b-a)));return t*t*(3-2*t);};
+    const river=ease(-400,-470,sy)*(1-ease(-600,-680,sy)),hidden=ease(-660,-760,sy)*(1-ease(-1080,-1160,sy));
+    const plants=ease(-1110,-1190,sy)*(1-ease(-1400,-1470,sy)),chest=ease(-1400,-1480,sy);
+    d.save();
+    if(hidden>0){d.globalCompositeOperation='multiply';d.fillStyle=`rgba(118,132,186,${.12*hidden})`;d.fillRect(0,0,640,H);}
+    d.globalCompositeOperation='screen';
+    if(river>0){d.fillStyle=`rgba(120,170,235,${.06*river})`;d.fillRect(0,0,640,H);}
+    const pool=(cx:number,cyStory:number,rad:number,a:number)=>{if(a<=0)return;const cy=worldY(cyStory)-cam,g=d.createRadialGradient(cx,cy,0,cx,cy,rad);
+      g.addColorStop(0,`rgba(214,230,255,${a})`);g.addColorStop(.55,`rgba(190,212,250,${a*.45})`);g.addColorStop(1,'rgba(190,212,250,0)');d.fillStyle=g;d.fillRect(0,0,640,H);};
+    pool(320,-1235,210,.10*plants);pool(320,-1590,250,.14*chest);
+    d.restore();
+  }
+  // Moon motes everywhere and an occasional drifting leaf, seeded per world cell with their own
+  // period and phase so nothing moves in lockstep. Game time only (pause freezes them), whole
+  // pixels only, and drawn behind every object and character.
+  private atmosphere(d:CanvasRenderingContext2D,w:World,cam:number){
+    const t=w.time,H=d.canvas.height,h=(a:number,b:number,k:number)=>{const s=Math.sin(a*127.1+b*311.7+k*74.7)*43758.5453;return s-Math.floor(s);};
+    d.save();
+    for(let cy=Math.floor(cam/72)-1;cy<=Math.floor((cam+H)/72)+1;cy++)for(let cx=0;cx<9;cx++){
+      if(h(cx,cy,1)>.6)continue;
+      const period=7+h(cx,cy,2)*6,f=((t+h(cx,cy,3)*period)%period)/period;
+      const x=cx*72+h(cx,cy,4)*72+Math.sin(t*(.35+h(cx,cy,5)*.45)+cx*1.7)*5,y=cy*72+h(cx,cy,6)*72-f*26;
+      d.globalAlpha=Math.sin(Math.PI*f)*(.16+h(cx,cy,7)*.22);d.fillStyle=h(cx,cy,8)>.8?'#e4efff':'#b9d2f4';
+      const s=h(cx,cy,9)>.86?2:1;d.fillRect(Math.round(x),Math.round(y-cam),s,s);}
+    const near=cam*1.12; // leaves drift on a near plane, a touch faster than the ground: depth without touching terrain
+    for(let cy=Math.floor(near/180)-1;cy<=Math.floor((near+H)/180)+1;cy++)for(let cx=0;cx<4;cx++){
+      if(h(cx,cy,11)>.4)continue;
+      const period=12+h(cx,cy,12)*9,f=((t+h(cx,cy,13)*period)%period)/period;if(f>.42)continue; // seen only now and then
+      const g=f/.42,x=cx*160+h(cx,cy,14)*160+g*36+Math.sin(g*8+cx)*6,y=cy*180+h(cx,cy,15)*110+g*64,X=Math.round(x),Y=Math.round(y-near),turn=Math.floor(g*7)%2;
+      d.globalAlpha=Math.sin(Math.PI*g)*.7;d.fillStyle=h(cx,cy,16)>.5?'#3f8a86':'#2f6f8f';d.fillRect(X,Y,2,1);d.fillRect(turn?X+2:X-1,Y+(turn?1:-1),1,1);}
+    d.restore();
+  }
+  // ---- Approved reference poses (modular: outfit tile + skin + facial trait, cached per combination) ----
+  private refPoses?:HTMLImageElement;private refPanels?:HTMLImageElement;private refFx?:HTMLImageElement;private refCache=new Map<string,HTMLCanvasElement>();
+  private drawRefPose(ctx:CanvasRenderingContext2D,look:Look,pose:RefPose,x:number,y:number,scale=1,mirror=false):boolean{
+    const q=REF_POSES[pose]?.[look.outfit];if(!q||!this.refPoses)return false;
+    const key=`${pose}/${look.outfit}/${look.skin}/${look.face}`;
+    if(!this.refCache.has(key)){const src=document.createElement('canvas');src.width=q.w;src.height=q.h;const sc=src.getContext('2d')!;sc.imageSmoothingEnabled=false;
+      sc.drawImage(this.refPoses,q.x,q.y,q.w,q.h,0,0,q.w,q.h);this.refCache.set(key,personalizePose(src,q.anchor,look));}
+    ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(Math.round(x),Math.round(y));ctx.scale(mirror?-scale:scale,scale);ctx.drawImage(this.refCache.get(key)!,-Math.floor(q.w/2),-q.h);ctx.restore();return true;
+  }
+  private fx(ctx:CanvasRenderingContext2D,group:'reflejos'|'hojas'|'petalos'|'destellos',i:number,x:number,y:number,alpha:number,scale=1){
+    const s=REF_FX[group];if(!this.refFx||!s.length||alpha<=0)return;const [sx,sy,sw,sh]=s[i%s.length];
+    ctx.save();ctx.globalAlpha=Math.min(1,alpha);ctx.imageSmoothingEnabled=false;ctx.drawImage(this.refFx,sx,sy,sw,sh,Math.round(x-sw*scale/2),Math.round(y-sh*scale/2),sw*scale,sh*scale);ctx.restore();
+  }
+  // Root close-up: the approved root plate (16:9 crop, exact 2x), Moonie drawn as her own layer on the
+  // path just past the root, a few foreground leaves drifting in the upper corner (never over her).
+  private drawRootShot(c:CanvasRenderingContext2D,w:World & {dialogueTop?:number}){
+    c.save();c.imageSmoothingEnabled=false;c.drawImage(this.refPanels!,0,0,320,180,0,0,640,360);
+    // The star keeps its place beside her (approved tile and glow, exact 2x), bobbing on game time.
+    const shot=rootShotLayout(w.dialogueTop);
+    const sy=Math.round(shot.starY+Math.sin(w.time*1.6)*4);this.glow(c,shot.starX,sy,40,'rgba(255,221,144,.30)');c.drawImage(this.tiles[3][3],shot.starX-16,sy-16,32,32);
+    const rise=w.motion==='rise';this.drawCharacter(c,w.look,w.direction,shot.x,shot.feetY,2,rise?animationFrame('rise',w.motionTime):2,rise?'rise':'fall');
+    for(let i=0;i<4;i++){const f=((w.time*.07+i*.29)%1+1)%1;this.fx(c,'hojas',i*2+1,590-i*34-f*150,-20+f*230,Math.sin(Math.PI*f)*.9,2);}
+    c.restore();
+  }
   drawCharacter(ctx:CanvasRenderingContext2D,look:Look,direction:Direction,x:number,y:number,scale=1,frame=0,state:Animation='idle') {
+    const refPose:RefPose|null=state==='fall'&&frame<=2?(['tropiezo','apoyo','recostada'] as const)[frame]:state==='rise'&&frame===0?'levantarse':null;
+    if(refPose&&this.drawRefPose(ctx,look,refPose,x,y,scale))return;
     const key=`${look.outfit}/${look.skin}/${look.face}/${direction}/${state}/${frame}`;
     if(!this.frames.has(key)){
       if(state==='fall'||(state==='rise'&&frame<3)){
@@ -244,6 +311,7 @@ export class MoonieRenderer {
     this.drawCharacter(c,look,direction,canvas.width/2,canvas.height-5,Math.min(canvas.width/52,canvas.height/69));
   }
   private glow(c:CanvasRenderingContext2D,x:number,y:number,r:number,color:string) {
+    x=Math.round(x);y=Math.round(y);r=Math.round(r); // whole-pixel glows (Documento Maestro §607)
     const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
   }
   private drawSecondGate(c:CanvasRenderingContext2D,retreat:number){
@@ -299,18 +367,30 @@ export class MoonieRenderer {
   }
   private drawSeatedInClass(c:CanvasRenderingContext2D,look:Look,sleeping:boolean) {
     const tile=this.seatedVariant(look,sleeping),height=sleeping?137:142;
-    const width=tile.width/tile.height*height,x=sleeping?314:309,bottom=318;
+    const width=Math.round(tile.width/tile.height*height),x=sleeping?314:309,bottom=318; // approved size; whole-pixel rectangle
     c.save();c.imageSmoothingEnabled=false;
-    c.drawImage(tile,x-width/2,bottom-height,width,height);c.restore();
+    c.drawImage(tile,Math.round(x-width/2),bottom-height,width,height);c.restore();
     // Restoring these foreground fragments places Moonie inside the chair and
     // behind the desk while keeping her head and arms above the desktop.
     this.redrawClassroom(c,219,264,193,15);
     this.redrawClassroom(c,245,271,86,89);
   }
+  private parallaxCam=0;private dreamStage?:HTMLCanvasElement; // camera of the frame being drawn, for decorative depth planes only
   draw(c:CanvasRenderingContext2D,w:World,reduced=false) {
+    this.parallaxCam=0;
     if(!this.loaded)return;
+    if(w.scene==='dream'&&!reduced){
+      // Director's cut: Moonie asleep in Humanística III, a 2x close shot of her approved seated
+      // sleeping pose. Fade-cut from the room; the scene's own glow and fade to dark carry on.
+      const e=Math.max(0,Math.min(1,w.dreamTime/.35));
+      if(e>=.5){if(!this.dreamStage){this.dreamStage=document.createElement('canvas');this.dreamStage.width=640;this.dreamStage.height=360;}
+        const sc=this.dreamStage.getContext('2d')!;this.drawBase(sc,w,reduced);c.save();c.imageSmoothingEnabled=false;c.drawImage(this.dreamStage,150,150,320,180,0,0,640,360);c.restore();}
+      else this.drawBase(c,w,reduced);
+      if(e>0&&e<1){c.fillStyle=`rgba(3,7,20,${Math.sin(e*Math.PI)*.95})`;c.fillRect(0,0,640,360);}
+      return;
+    }
     if(!w.challenges||!['forest','letter','closing'].includes(w.scene)){this.drawBase(c,w,reduced);return;}
-    const q=w.challenges,view=this.adventure.camera(w),cam=view.y,legacy={...w,y:storyY(w.y)};
+    const q=w.challenges,view=this.adventure.camera(w),cam=view.y,legacy={...w,y:storyY(w.y)};this.parallaxCam=cam;
     const stage=this.stage||(this.stage=document.createElement('canvas'));stage.width=640;stage.height=360;
     const d=stage.getContext('2d')!;d.imageSmoothingEnabled=false;
     const segment=(top:number,bottom:number,offset:number,omitSign=false)=>{d.save();d.beginPath();d.rect(0,top-cam,640,bottom-top);d.clip();this.drawBase(d,legacy,reduced,cam+offset,true,omitSign);d.restore();};
@@ -325,7 +405,14 @@ export class MoonieRenderer {
     d.drawImage(this.adventure.river,0,RIVER_TOP-cam-20);
     d.drawImage(this.adventure.mazeJoin,0,MAZE_TOP-185-cam);
     d.drawImage(this.adventure.riverJoin,0,RIVER_TOP-190-cam);
+    this.zoneLight(d,cam);
+    // Water reflections (static sprites, twinkling on game time, on open water between the stones).
+    for(let i=0;i<10;i++){const x=175+((i*97)%300),y=RIVER_TOP+128+((i*53)%108)-cam,a=.35+Math.sin(w.time*(.6+(i%4)*.17)+i*2.1)*.3;if(y>-10&&y<370)this.fx(d,'reflejos',i,x+Math.round(Math.sin(w.time*.25+i)*2),y,a);}   // terrain only: never tints or covers characters, books or flowers
+    this.atmosphere(d,w,cam);
     this.adventure.draw(d,w,cam);
+    // Petals answering a flower's awakening, rising on the cinema's own clock (pause holds them).
+    if(q.cinema&&['ritual','bloom2','bloom3'].includes(q.cinema.kind)){const f=q.cinema.kind==='ritual'?{x:365,y:195}:q.cinema.kind==='bloom2'?{x:360,y:worldY(-560)}:{x:342,y:worldY(-1320)},t=q.cinema.time;
+      for(let i=0;i<9;i++){const p=((t*.45+i/9)%1),x=f.x+Math.sin(t*1.2+i*1.7)*(8+p*14),y=f.y-10-p*38-cam;this.fx(d,'petalos',i,x,y,Math.sin(Math.PI*p)*Math.min(1,t/.6)*.85);}}
     // All world objects are composited after terrain, never beneath a map edge.
     for(const object of this.foreground){const y=worldY(object.y);if(w.y<y||y<cam-80||y>cam+450)continue;d.save();d.translate(0,y-object.y-cam);object.draw();d.restore();}
     // One world actor draw avoids partial characters at every compositing edge.
@@ -335,20 +422,20 @@ export class MoonieRenderer {
     if(s?.kind==='spirit')pose=s.index===2?1:0;
     if(q.river==='jumping'){pose=3;arc=Math.sin(Math.min(1,q.riverTime/.55)*Math.PI)*24;}
     if(s?.kind==='riverError'){pose=s.time<.7?2:3;arc=Math.sin(Math.max(0,Math.min(1,(s.time-.7)/(s.duration-1)))*Math.PI)*48;}
-    if(w.scene==='closing')d.drawImage(this.finalePoses.frame(w.look,(w.finalTime||0)>=6.2),Math.round(w.x)-24,Math.round(w.y-cam)-64);
+    if(w.scene==='closing'){const smile=(w.finalTime||0)>=6.2;if(!(smile&&this.drawRefPose(d,w.look,'carta',w.x,w.y-cam)))d.drawImage(this.finalePoses.frame(w.look,smile),Math.round(w.x)-24,Math.round(w.y-cam)-64);}
     else if(pose>=0){
       d.fillStyle='rgba(1,9,24,.22)';d.beginPath();d.ellipse(Math.round(w.x),Math.round(w.y-cam),15,4,0,0,Math.PI*2);d.fill();
       d.save();d.translate(Math.round(w.x),Math.round(w.y-cam-arc));
       if(s?.kind==='spirit'&&LIGHTS[s.index].x>w.x)d.scale(-1,1);
       d.drawImage(this.adventure.pose(w.look,pose),-24,-64);d.restore();
     }
-    else this.drawCharacter(d,w.look,w.direction,w.x,w.y-cam,1,frame,animation);
+    else if(!(w.reading&&(()=>{const b=LANDMARKS[w.reading as 'book1'|'book2'|'book3'];return b&&this.drawRefPose(d,w.look,'libro',w.x,w.y-cam,1,b.x<w.x);})()))this.drawCharacter(d,w.look,w.direction,w.x,w.y-cam,1,frame,animation); // reading: leans toward the book
     // Restore the approved depth order after drawing the single world actor.
     for(const object of this.foreground){const y=worldY(object.y);if(w.y>=y||y<cam-80||y>cam+450)continue;d.save();d.translate(0,y-object.y-cam);object.draw();d.restore();}
     this.adventure.foreground(d,w,cam);
     c.clearRect(0,0,640,360);c.imageSmoothingEnabled=false;c.drawImage(stage,0,0);
     // Reframe through a brief blue dissolve; never overlay two differently sized actors.
-    if(view.close>=.5){const sx=Math.round(Math.max(0,Math.min(320,view.x-160)));c.drawImage(stage,sx,90,320,180,0,0,640,360);}
+    if(view.close>=.5){const shot=q.cinema?null:momentShot(w as never);if(shot?.kind==='fall'&&this.refPanels)this.drawRootShot(c,w);else{const sx=Math.round(Math.max(0,Math.min(320,view.x-160)));c.drawImage(stage,sx,90,320,180,0,0,640,360);}}
     if(view.close>0&&view.close<1){c.fillStyle=`rgba(6,16,40,${Math.sin(view.close*Math.PI)*.95})`;c.fillRect(0,0,640,360);}
     if(s){const bars=Math.round(Math.min(1,s.time/.4,(s.duration-s.time)/.4)*19);c.fillStyle='#061027';c.fillRect(0,0,640,bars);c.fillRect(0,360-bars,640,bars);}
     if(w.scene==='closing'){const t=w.finalTime||0;c.fillStyle=`rgba(6,16,40,${Math.max(0,Math.min(1,(t-8)/2))})`;c.fillRect(0,0,640,360);}
@@ -358,7 +445,7 @@ export class MoonieRenderer {
     c.clearRect(0,0,640,360);c.imageSmoothingEnabled=false;
     if(w.scene==='end'){
       c.drawImage(this.finalMoon,0,0,640,360);
-      const x=503+Math.sin(w.time*.65)*3,y=107+Math.cos(w.time*.5)*4;
+      const x=Math.round(503+Math.sin(w.time*.65)*3),y=Math.round(107+Math.cos(w.time*.5)*4); // whole pixels
       this.glow(c,x,y,32,'rgba(255,222,159,.38)');c.drawImage(this.tiles[3][3],x-8,y-8,16,16);
       for(let i=0;i<7;i++){c.fillStyle=`rgba(255,232,175,${.6-i*.07})`;c.fillRect(Math.round(x+12+i*3),Math.round(y+5+Math.sin(i*.5)*5),2,2);}
       return;
@@ -382,7 +469,7 @@ export class MoonieRenderer {
       c.fillStyle='rgba(3,9,29,.32)';c.fillRect(0,0,640,360);
       const t=reduced?0:w.time;
       const star=this.tiles[3][3];
-      const sx=163+Math.sin(t*.45)*9,sy=52+Math.cos(t*.6)*7;
+      const sx=Math.round(163+Math.sin(t*.45)*9),sy=Math.round(52+Math.cos(t*.6)*7); // whole pixels
       this.glow(c,sx,sy,28,'rgba(255,221,144,.30)');
       c.drawImage(star,sx-8,sy-8,16,16);
     }
@@ -430,11 +517,13 @@ export class MoonieRenderer {
         if(!w.simonMet)c.scale(-1,1);
         c.drawImage(this.simon[posed?1:0],-20,-40);c.restore();
       };
-      this.drawSecondGate(c,secondOpen?gateRetreat(secondAge):0);
+      // Vines stir (a decaying 1px quiver) in the moment before they withdraw.
+      const stir=secondOpen&&secondAge>.05&&secondAge<.6?Math.round(Math.sin(secondAge*42)*1.4*(1-(secondAge-.05)/.55)):0;
+      c.save();c.translate(stir,0);this.drawSecondGate(c,secondOpen?gateRetreat(secondAge):0);c.restore();
       const objects=[{y:LANDMARKS.chest.y,draw:()=>{
         const {x,y}=LANDMARKS.chest,age=w.chestTime===undefined?-1:w.time-w.chestTime;
         const pose=age<0?0:age<.75?1:2;
-        this.glow(c,x,y-18,45,`rgba(190,225,255,${pose?.32:.12})`);c.drawImage(this.chest[pose],x-29,y-62);
+        this.glow(c,x,y-18,45,`rgba(190,225,255,${pose?.32:.11+Math.sin(w.time*1.1)*.035})`);c.drawImage(this.chest[pose],x-29,y-62); // closed chest halo breathes slowly
       }},{y:f.y,draw:drawFlower},{y:SECOND_FLOWER.y,draw:flower2},{y:THIRD_FLOWER.y,draw:flower3},{y:LANDMARKS.simon.y,draw:dog},...(['book1','book2','book3'] as const).map((kind,i)=>({y:LANDMARKS[kind].y,draw:()=>{
         const o=LANDMARKS[kind],open=w.reading===kind;
         this.glow(c,o.x,o.y-23,26,'rgba(192,219,255,.14)');
@@ -444,7 +533,7 @@ export class MoonieRenderer {
       c.fillStyle='rgba(1,9,24,.32)';c.beginPath();c.ellipse(Math.round(w.x),Math.round(w.y)-1,15,4,0,0,Math.PI*2);c.fill();
       const animation:Animation=w.motion==='rise'?'rise':w.motion?'fall':w.interactionTime>=0?'interact':w.walking?'walk':'idle';
       const frame=w.motion==='fallen'?2:animationFrame(animation,w.motion?w.motionTime:animation==='interact'?w.interactionTime:w.animationTime);
-      if(!hideCharacter){if(w.scene==='closing')c.drawImage(this.finalePoses.frame(w.look,(w.finalTime||0)>=6.2),Math.round(w.x)-24,Math.round(w.y)-64);
+      if(!hideCharacter){if(w.scene==='closing'){const smile=(w.finalTime||0)>=6.2;if(!(smile&&this.drawRefPose(c,w.look,'carta',w.x,w.y)))c.drawImage(this.finalePoses.frame(w.look,smile),Math.round(w.x)-24,Math.round(w.y)-64);}
       else this.drawCharacter(c,w.look,w.direction,w.x,w.y,1,frame,animation);}
       if(!hideCharacter)objects.filter(o=>w.y<o.y).forEach(o=>o.draw());
       if(hideCharacter)this.foreground=objects;
@@ -473,7 +562,8 @@ export class MoonieRenderer {
         sx=Math.round(this.guide.x);sy=Math.round(this.guide.y+Math.sin(w.time*2)*3);
         const pulse=(age<2.4||w.flowerPulse)?Math.pow(Math.max(0,Math.sin((age%2.4)*Math.PI*2/1.2)),4):.18;
         this.glow(c,sx,sy,24+pulse*9,`rgba(255,219,136,${.22+pulse*.25})`);
-        c.drawImage(this.tiles[3][3],sx-8,sy-8,16,16);
+        c.drawImage(this.tiles[3][3],Math.round(sx-8),Math.round(sy-8),16,16);
+        for(let i=0;i<3;i++){const a=Math.max(0,Math.sin(w.time*(1.3+i*.4)+i*2.3));this.fx(c,'destellos',i*3+2,sx+[-13,12,4][i],sy+[-6,3,-13][i],a*a*.8);} // delicate sparkles around the star
         for(let i=1;i<=5;i++){c.globalAlpha=.5-i*.075;c.fillStyle='#ffe4ae';c.fillRect(sx+Math.round(Math.sin(w.time*2-i)*4),sy+8+i*3,2,2);}c.globalAlpha=1;
       }
       // Existing leafy art forms a gate; both halves visibly withdraw on bloom.
@@ -545,9 +635,8 @@ export class MoonieRenderer {
     }
     const time=reduced?0:w.time;
     for(let i=0;i<27;i++) {
-      const x=(i*137%590)+25+Math.sin(time*.5+i)*5,y=(i*89%290)+35+Math.cos(time*.7+i)*4;
-      const opacity=.3+Math.sin(time*1.1+i)*.2;
-      this.glow(c,x,y,7,`rgba(247,218,139,${opacity*.8})`);c.fillStyle=`rgba(255,232,163,${opacity+.15})`;c.fillRect(Math.round(x),Math.round(y),1,1);
+      const f=fireflyAt(i,time,this.parallaxCam); // own speed, phase, path and blink; far plane
+      this.glow(c,f.x,f.y,7,`rgba(247,218,139,${f.opacity*.8})`);c.fillStyle=`rgba(255,232,163,${f.opacity+.15*f.edge})`;c.fillRect(f.x,f.y,1,1);
     }
     if(w.scene==='closing'){
       const t=w.finalTime||0;

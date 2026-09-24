@@ -75,11 +75,12 @@ export function extractPoses(atlas:HTMLImageElement,outfit:number) {
   });
 }
 export function personalizePose(src:HTMLCanvasElement,anchor:FaceAnchor,look:Look,warmContrast=10){
-  const tile=document.createElement('canvas');tile.width=48;tile.height=64;
+  // Canvas size follows the pose: 48x64 for the playable cell, wider for lying poses.
+  const W=src.width,H=src.height,tile=document.createElement('canvas');tile.width=W;tile.height=H;
   const c=tile.getContext('2d',{willReadFrequently:true})!;c.drawImage(src,0,0);
-  const data=c.getImageData(0,0,48,64),p=data.data;
+  const data=c.getImageData(0,0,W,H),p=data.data;
   for(let i=0;i<p.length;i+=4){
-    const r=p[i],g=p[i+1],b=p[i+2],x=i/4%48,y=Math.floor(i/4/48);
+    const r=p[i],g=p[i+1],b=p[i+2],x=i/4%W,y=Math.floor(i/4/W);
     if(r>165&&r-g>warmContrast&&g-b>10&&b>45&&p[i+3]>0){
       if(look.skin==='medium'){p[i]=r*.80;p[i+1]=g*.70;p[i+2]=b*.62;}
       if(look.skin==='dark'){p[i]=r*.53;p[i+1]=g*.42;p[i+2]=b*.35;}
