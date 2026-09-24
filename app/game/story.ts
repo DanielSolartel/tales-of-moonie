@@ -54,7 +54,7 @@ export const CHEST_LINES:Line[] = [
   {speaker:'Moonie',text:'Tres flores mágicas, un bosque imposible y una estrella misteriosa…'},
   {speaker:'Moonie',text:'Definitivamente esto no estaba en el programa de Humanística III.'},
 ];
-export const LETTER = ['Para Moonie 🌙','La próxima aventura comienza el...','Sábado 05/09/2026','Te espero. ❤️'] as const;
+export const LETTER = ['Para Moonie 🌙','La próxima aventura comienza el...','Sábado 03/10/2026','Te espero. ❤️'] as const;
 export const BOOK_THREE:Line[] = [
   {speaker:'Cartas bajo la misma luna',text:'Las cartas más importantes no siempre llegaban por correo. Algunas esperaban bajo la misma luna hasta que una estrella encontraba a la persona correcta.'},
   {speaker:'Moonie',text:'Qué sistema de entrega tan complicado.'},
