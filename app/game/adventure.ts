@@ -247,14 +247,15 @@ export function cinemaCamera(w:ChallengeWorld){
 // a fade back to exactly the gameplay framing. Moonie is never moved; game time only, so pause holds.
 type MomentWorld=ChallengeWorld&{scene?:string;motion?:string|null;motionTime?:number;chestTime?:number;finalTime?:number;simonTime:number};
 export const SIMON_SHOT=2.9;
-export function momentShot(w:MomentWorld):{x:number;y:number;e:number}|null{
+export type MomentKind='closing'|'fall'|'simon'|'chest';
+export function momentShot(w:MomentWorld):{x:number;y:number;e:number;kind:MomentKind}|null{
   const c=(v:number)=>Math.max(0,Math.min(1,v));
-  if(w.scene==='closing'){const t=w.finalTime||0,e=c((t-.2)/.4)*c((2.9-t)/.4);return e>0?{x:w.x,y:w.y-22,e}:null;} // smile; the ascent stays wide
+  if(w.scene==='closing'){const t=w.finalTime||0,e=c((t-.2)/.4)*c((2.9-t)/.4);return e>0?{x:w.x,y:w.y-22,e,kind:'closing'}:null;} // smile; the ascent stays wide
   if(w.scene!=='forest')return null;
-  if(w.motion==='fallen')return {x:w.x,y:w.y-14,e:c((w.motionTime||0)/.6)};                    // fall and crutches dialogue
-  if(w.motion==='rise'){const e=1-c((w.motionTime||0)/.6);return e>0?{x:w.x,y:w.y-14,e}:null;}
+  if(w.motion==='fallen')return {x:w.x,y:w.y-14,e:c((w.motionTime||0)/.6),kind:'fall'};                    // fall and crutches dialogue
+  if(w.motion==='rise'){const e=1-c((w.motionTime||0)/.6);return e>0?{x:w.x,y:w.y-14,e,kind:'fall'}:null;}
   if(w.simonMet&&w.simonTime>=0){const age=w.time-w.simonTime;if(age>=0&&age<SIMON_SHOT){const S=LANDMARKS.simon;  // photo session: in before the first flash
-    return {x:Math.round((w.x+S.x)/2),y:Math.round((w.y+worldY(S.y))/2)-18,e:c(age/.25)*c((SIMON_SHOT-age)/.4)};}}
-  if(w.chestTime!==undefined){const age=w.time-w.chestTime,C=LANDMARKS.chest;if(age>=0)return {x:C.x,y:worldY(C.y)+6,e:c(age/.4)};}  // opening, until the letter
+    return {x:Math.round((w.x+S.x)/2),y:Math.round((w.y+worldY(S.y))/2)-18,e:c(age/.25)*c((SIMON_SHOT-age)/.4),kind:'simon'};}}
+  if(w.chestTime!==undefined){const age=w.time-w.chestTime,C=LANDMARKS.chest;if(age>=0)return {x:C.x,y:worldY(C.y)+6,e:c(age/.4),kind:'chest'};}  // opening, until the letter
   return null;
 }

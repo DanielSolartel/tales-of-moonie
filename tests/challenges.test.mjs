@@ -139,6 +139,20 @@ test('Planos cercanos de los momentos (caída, fotos de Simón, cofre, sonrisa):
  // Sin momento activo la cámara es exactamente la de juego.
  w=mk({});assert.deepEqual(g.cinemaCamera(w),{y:g.gameCamera(w.y),x:Math.round(w.x),close:0});
 });
+test('Poses de referencia aprobadas: seis poses × tres atuendos con anclajes dentro del lienzo',async()=>{
+ const R=await import(await compile('referencias'));
+ for(const pose of ['tropiezo','apoyo','recostada','levantarse','libro','carta'])for(const o of ['real','artist','explorer']){
+  const q=R.REF_POSES[pose][o];assert.ok(q,`${pose}/${o} falta`);const a=q.anchor;
+  assert.ok(a.eyes[0]>=0&&a.eyes[1]<q.w&&a.eyes[0]<a.eyes[1]&&a.y>=0&&a.y<q.h,`${pose}/${o}: ojos fuera del lienzo`);
+  assert.ok(a.eyes[1]-a.eyes[0]>=6&&a.eyes[1]-a.eyes[0]<=11,`${pose}/${o}: separación de ojos ${a.eyes[1]-a.eyes[0]} fuera de la escala del juego`);
+  if(['libro','carta'].includes(pose))assert.ok(q.h<=67&&q.w<=48,`${pose}/${o}: de pie debe caber en la escala jugable (${q.w}x${q.h})`);
+  if(['apoyo','recostada'].includes(pose))assert.ok(q.w>q.h,`${pose}/${o}: pose horizontal sin comprimir`);}
+ for(const g of ['reflejos','hojas','petalos','destellos'])assert.ok(R.REF_FX[g].length>0,`efecto ${g} vacío`);
+});
+test('momentShot indica el tipo de plano cercano',()=>{
+ const w={x:342,y:g.worldY(-1106),bloomed:true,progress:7,time:40,secondBloomTime:0,thirdBloomTime:10,simonMet:false,simonTime:-1,scene:'forest',motion:'fallen',motionTime:1,challenges:g.freshChallenges(0)};
+ assert.equal(g.momentShot(w).kind,'fall');w.motion=null;w.chestTime=39;assert.equal(g.momentShot(w).kind,'chest');w.scene='closing';w.finalTime=1;assert.equal(g.momentShot(w).kind,'closing');
+});
 test('Rayos lunares del laberinto estables al cruzar las bocas: ningún parpadeo',()=>{
  // Los rayos se dibujaban solo con Moonie dentro, y el del punto de salida cruzaba la frontera:
  // una luz se encendía y apagaba en cada cruce. Ahora son escenario y la boca no tiene rayo.
