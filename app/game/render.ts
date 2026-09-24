@@ -7,7 +7,7 @@ import { extractChest, prepareFinalMap, FinalePoses } from './finale';
 import { AdventureArt } from './adventure-art';
 import { RIVER_TOP, RIVER_BOTTOM, MAZE_HEIGHT, WORLD_EXTENSION, patternSequence, worldY } from './adventure';
 import { Challenges, MAZE_TOP, MAZE_BOTTOM, storyY, PLANTS, LIGHTS, momentShot } from './challenges';
-import { REF_POSES, REF_FX, RefPose } from './referencias';
+import { REF_POSES, REF_FX, RefPose, rootShotLayout } from './referencias';
 
 export type World = { scene:Scene; x:number; y:number; direction:Direction; walking:boolean; time:number; bloomed:boolean; bloomTime:number; dreamTime:number; sleeping:boolean; look:Look; animationTime:number; interactionTime:number; progress:Progress; secondBloomTime:number; reading: 'book1'|'book2'|'book3'|null; thirdBloomTime:number; motion:'fall'|'fallen'|'rise'|null; motionTime:number; starTime:number; simonMet:boolean; simonTime:number; starGreeting:boolean; flowerPulse:boolean; chestTime?:number; finalTime?:number; challenges?:Challenges };
 type Tile = HTMLCanvasElement;
@@ -279,11 +279,12 @@ export class MoonieRenderer {
   }
   // Root close-up: the approved root plate (16:9 crop, exact 2x), Moonie drawn as her own layer on the
   // path just past the root, a few foreground leaves drifting in the upper corner (never over her).
-  private drawRootShot(c:CanvasRenderingContext2D,w:World){
+  private drawRootShot(c:CanvasRenderingContext2D,w:World & {dialogueTop?:number}){
     c.save();c.imageSmoothingEnabled=false;c.drawImage(this.refPanels!,0,0,320,180,0,0,640,360);
     // The star keeps its place beside her (approved tile and glow, exact 2x), bobbing on game time.
-    const sy=Math.round(246+Math.sin(w.time*1.6)*4);this.glow(c,196,sy,40,'rgba(255,221,144,.30)');c.drawImage(this.tiles[3][3],180,sy-16,32,32);
-    const rise=w.motion==='rise';this.drawCharacter(c,w.look,w.direction,300,322,2,rise?animationFrame('rise',w.motionTime):2,rise?'rise':'fall');
+    const shot=rootShotLayout(w.dialogueTop);
+    const sy=Math.round(shot.starY+Math.sin(w.time*1.6)*4);this.glow(c,shot.starX,sy,40,'rgba(255,221,144,.30)');c.drawImage(this.tiles[3][3],shot.starX-16,sy-16,32,32);
+    const rise=w.motion==='rise';this.drawCharacter(c,w.look,w.direction,shot.x,shot.feetY,2,rise?animationFrame('rise',w.motionTime):2,rise?'rise':'fall');
     for(let i=0;i<4;i++){const f=((w.time*.07+i*.29)%1+1)%1;this.fx(c,'hojas',i*2+1,590-i*34-f*150,-20+f*230,Math.sin(Math.PI*f)*.9,2);}
     c.restore();
   }
